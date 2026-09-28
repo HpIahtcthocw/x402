@@ -1,0 +1,345 @@
+{
+  "contractName": "AgentPayments",
+  "abi": [
+    {
+      "inputs": [],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "paymentId",
+          "type": "bytes32"
+        }
+      ],
+      "name": "AlreadyRefunded",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ERC20TransferFailed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NativeTransferFailed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NotOwner",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "token",
+          "type": "address"
+        }
+      ],
+      "name": "NothingToWithdraw",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "paymentId",
+          "type": "bytes32"
+        }
+      ],
+      "name": "PaymentAlreadyRecorded",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "paymentId",
+          "type": "bytes32"
+        }
+      ],
+      "name": "PaymentNotFound",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "paymentId",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "payer",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "token",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint64",
+          "name": "timestamp",
+          "type": "uint64"
+        }
+      ],
+      "name": "PaymentRecorded",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "paymentId",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "PaymentRefunded",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "token",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "to",
+          "type": "address"
+        }
+      ],
+      "name": "Withdrawn",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "collected",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "paymentId",
+          "type": "bytes32"
+        }
+      ],
+      "name": "isRecorded",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "nativeHeld",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "owner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "paymentId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "payer",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "token",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "recordERC20",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "paymentId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "payer",
+          "type": "address"
+        }
+      ],
+      "name": "recordNative",
+      "outputs": [],
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "paymentId",
+          "type": "bytes32"
+        }
+      ],
+      "name": "refund",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "name": "settlements",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "paymentId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "payer",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "token",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint64",
+          "name": "timestamp",
+          "type": "uint64"
+        },
+        {
+          "internalType": "bool",
+          "name": "refunded",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "token",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "to",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "withdraw",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "stateMutability": "payable",
+      "type": "receive"
+    }
+  ],
+  "bytecode": "0x60a060405234801561000f575f80fd5b5033608052608051610c3661003a5f395f8181610244015281816102c701526108920152610c365ff3fe608060405260043610610087575f3560e01c80637249fbb6116100575780637249fbb6146101ff578063893b2b75146102205780638da5cb5b14610233578063938037151461027e578063d9caed121461029d575f80fd5b806301bc95e21461009257806312dcb7a01461014657806334285c091461018f57806338e43840146101d4575f80fd5b3661008e57005b5f80fd5b34801561009d575f80fd5b506100fc6100ac366004610aab565b5f602081905290815260409020805460018201546002830154600384015460049094015492936001600160a01b0392831693929091169167ffffffffffffffff811690600160401b900460ff1686565b604080519687526001600160a01b0395861660208801529390941692850192909252606084015267ffffffffffffffff166080830152151560a082015260c0015b60405180910390f35b348015610151575f80fd5b5061017f610160366004610aab565b5f908152602081905260409020600101546001600160a01b0316151590565b604051901515815260200161013d565b34801561019a575f80fd5b505f805260016020527fa6eef7e35abe7026729641147f7915573c7e97b47efa546f5f6e3230263bcb49545b60405190815260200161013d565b3480156101df575f80fd5b506101c66101ee366004610add565b60016020525f908152604090205481565b34801561020a575f80fd5b5061021e610219366004610aab565b6102bc565b005b61021e61022e366004610afd565b61053b565b34801561023e575f80fd5b506102667f000000000000000000000000000000000000000000000000000000000000000081565b6040516001600160a01b03909116815260200161013d565b348015610289575f80fd5b5061021e610298366004610b27565b6106e7565b3480156102a8575f80fd5b5061021e6102b7366004610b68565b610887565b336001600160a01b037f00000000000000000000000000000000000000000000000000000000000000001614610305576040516330cd747160e01b815260040160405180910390fd5b5f81815260208190526040902060018101546001600160a01b03166103455760405163272f9fc160e01b8152600481018390526024015b60405180910390fd5b6004810154600160401b900460ff161561037557604051631316266b60e01b81526004810183905260240161033c565b60048101805468ff00000000000000001916600160401b179055600381015460028201546001600160a01b03165f90815260016020526040812080549091906103bf908490610bb5565b909155505060028101546001600160a01b031661045357600181015460038201546040515f926001600160a01b031691908381818185875af1925050503d805f8114610426576040519150601f19603f3d011682016040523d82523d5f602084013e61042b565b606091505b505090508061044d57604051633d2cec6f60e21b815260040160405180910390fd5b506104f9565b60028101546001820154600383015460405163a9059cbb60e01b81526001600160a01b03928316600482015260248101919091525f92919091169063a9059cbb906044016020604051808303815f875af11580156104b3573d5f803e3d5ffd5b505050506040513d601f19601f820116820180604052508101906104d79190610bce565b9050806104f757604051633c9fd93960e21b815260040160405180910390fd5b505b817f7a1dd09597e0454bccf83a57e47d6ce29d4f89f3dd01f54d4bcf1768b1728654826003015460405161052f91815260200190565b60405180910390a25050565b5f828152602081905260409020600101546001600160a01b0316156105765760405163f7d897f560e01b81526004810183905260240161033c565b345f0361059857604051636e34ee0b60e11b81525f600482015260240161033c565b6040805160c0810182528381526001600160a01b0380841660208084019182525f848601818152346060870181815267ffffffffffffffff42811660808a0190815260a08a018681528d87528688529a862099518a55965160018a81018054928b166001600160a01b0319938416179055945160028b01805491909a1691161790975551600388015593516004909601805497511515600160401b0268ffffffffffffffffff199098169690951695909517959095179092558380529190527fa6eef7e35abe7026729641147f7915573c7e97b47efa546f5f6e3230263bcb49805491929091610689908490610bed565b9091555050604080515f81523460208201524267ffffffffffffffff168183015290516001600160a01b0383169184917f75b826c1e4e51b188c648398521ceee258f3ba42ce0589ee07bde217553d56d99181900360600190a35050565b5f848152602081905260409020600101546001600160a01b0316156107225760405163f7d897f560e01b81526004810185905260240161033c565b805f0361074d57604051636e34ee0b60e11b81526001600160a01b038316600482015260240161033c565b6040805160c0810182528581526001600160a01b0380861660208084019182528683168486018181526060860188815267ffffffffffffffff428116608089019081525f60a08a018181528f82528188528b82209a518b55975160018b81018054928c166001600160a01b0319938416179055955160028c01805491909b169116179098559151600389015590516004909701805495511515600160401b0268ffffffffffffffffff199096169790911696909617939093179094559282529091529081208054839290610822908490610bed565b9091555050604080516001600160a01b038481168252602082018490524267ffffffffffffffff168284015291519185169186917f75b826c1e4e51b188c648398521ceee258f3ba42ce0589ee07bde217553d56d9919081900360600190a350505050565b336001600160a01b037f000000000000000000000000000000000000000000000000000000000000000016146108d0576040516330cd747160e01b815260040160405180910390fd5b6001600160a01b0383165f908152600160205260408120549081900361091457604051636e34ee0b60e11b81526001600160a01b038516600482015260240161033c565b5f8183116109225782610924565b815b90506109308183610bb5565b6001600160a01b0386165f818152600160205260409020919091556109c5575f846001600160a01b0316826040515f6040518083038185875af1925050503d805f8114610998576040519150601f19603f3d011682016040523d82523d5f602084013e61099d565b606091505b50509050806109bf57604051633d2cec6f60e21b815260040160405180910390fd5b50610a5a565b60405163a9059cbb60e01b81526001600160a01b038581166004830152602482018390525f919087169063a9059cbb906044016020604051808303815f875af1158015610a14573d5f803e3d5ffd5b505050506040513d601f19601f82011682018060405250810190610a389190610bce565b905080610a5857604051633c9fd93960e21b815260040160405180910390fd5b505b604080516001600160a01b0387811682526020820184905286168183015290517fcbcdbdf10631a43cc99c80acace8232649421c3f4f73919f16013d47c83a687a9181900360600190a15050505050565b5f60208284031215610abb575f80fd5b5035919050565b80356001600160a01b0381168114610ad8575f80fd5b919050565b5f60208284031215610aed575f80fd5b610af682610ac2565b9392505050565b5f8060408385031215610b0e575f80fd5b82359150610b1e60208401610ac2565b90509250929050565b5f805f8060808587031215610b3a575f80fd5b84359350610b4a60208601610ac2565b9250610b5860408601610ac2565b9396929550929360600135925050565b5f805f60608486031215610b7a575f80fd5b610b8384610ac2565b9250610b9160208501610ac2565b9150604084013590509250925092565b634e487b7160e01b5f52601160045260245ffd5b81810381811115610bc857610bc8610ba1565b92915050565b5f60208284031215610bde575f80fd5b81518015158114610af6575f80fd5b80820180821115610bc857610bc8610ba156fea2646970667358221220c2c0108c2923874873735de4f87d213c403c14ce4ba5db4600f01871aba3fe9c64736f6c63430008180033"
+}
