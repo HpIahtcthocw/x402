@@ -31,7 +31,7 @@ import {
   signTransferWithAuthorization,
 } from "@/lib/x402/client";
 import type { PaymentRequired, SettlementResponse } from "@/lib/x402/types";
-import { decodeSettlementResponse } from "@/lib/x402/encode";
+import { decodeSettlementResponse, encodePaymentPayload } from "@/lib/x402/encode";
 
 /**
  * AI Agent × x402 payment demo — dark Web3 console.
@@ -171,7 +171,7 @@ export function AgentPaymentsDemo() {
       });
 
       const payload = buildPaymentPayload({ required: challenge, accepted: requirement, auth, signature });
-      const header = btoa(JSON.stringify(payload));
+      const header = encodePaymentPayload(payload);
       setSignatureHeader(header);
 
       setStep("agent → api: retry with PAYMENT-SIGNATURE");
@@ -222,8 +222,6 @@ export function AgentPaymentsDemo() {
     <div className="flex flex-col gap-5">
       {/* ── Hero: what this is, why it matters ── */}
       <section className="relative overflow-hidden rounded-2xl border border-white/8 bg-card/60 px-6 py-8 backdrop-blur">
-        <div className="pointer-events-none absolute -left-24 -top-32 size-80 rounded-full bg-primary/15 blur-[100px]" />
-        <div className="pointer-events-none absolute -right-16 -top-16 size-64 rounded-full bg-accent/12 blur-[90px]" />
         <div className="relative flex flex-col gap-4">
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 font-mono text-[10px] font-semibold text-primary">
@@ -490,7 +488,7 @@ export function AgentPaymentsDemo() {
                 <div
                   className={
                     current
-                      ? "flex items-center gap-1.5 rounded-full border border-primary/50 bg-primary/10 px-3 py-1 font-mono text-[11px] font-semibold text-primary shadow-[0_0_14px_-2px_var(--color-primary)]"
+                      ? "flex items-center gap-1.5 rounded-full border border-primary/50 bg-primary/10 px-3 py-1 font-mono text-[11px] font-semibold text-primary"
                       : done
                         ? "flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 font-mono text-[11px] text-primary/80"
                         : "flex items-center gap-1.5 rounded-full border border-white/8 bg-white/3 px-3 py-1 font-mono text-[11px] text-muted-foreground"
