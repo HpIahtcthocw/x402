@@ -37,7 +37,7 @@ npm run smoke:x402   # 402 → 签名 → verify → 结算 全链路
 
 浏览器打开后：连接钱包（burner 零门槛）→ 选任务 → ① 发起任务（触发 402）→ ② 签名授权并支付 → 看结算回执 + 任务结果。
 
-## 部署到 Fuji（测试币到账后执行）
+## 部署到 Fuji（Chain ID 43113 · 测试币到账后执行）
 
 ```bash
 # 1. 编译合约（已产出 scripts/artifacts/*.json）
@@ -86,7 +86,7 @@ DEPLOYER_PRIVATE_KEY=0x... TOKEN=<AgentToken> TO=<钱包> AMOUNT=100 npm run min
 
 - **x402**：Coinbase 开放支付标准（HTTP 402 复活）— `specs/x402-specification-v2.md`，EIP-3009 exact 方案
 - **AvaKit**：`npm create avalanche-app`（本项目骨架），钱包适配器 + 链数据 API
-- **Avalanche eERC**：`@avalabs/eerc-sdk`（隐私代币，本底座的可选隐私结算层，保留在第二 Tab）
+- **Avalanche eERC**：`@avalabs/eerc-sdk`（隐私代币，本底座的可选隐私结算层；模板自带面板已从首页移除，聚焦 x402 主线）
 - **Ava Labs**：HyperSDK Starter Kit / Avalanche Starter Kit / Builder Hub faucet
 
 ## 四赛复用
