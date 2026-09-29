@@ -8,8 +8,20 @@ import {
   useAvaKit,
 } from "@avakit/react";
 import { getPublicClient, toViemChain } from "@avakit/core";
-import { ArrowDown, CheckCircle2, Loader2, Lock, ShieldCheck, Wallet } from "lucide-react";
-import { useTheme } from "next-themes";
+import {
+  ArrowDownRight,
+  CheckCircle2,
+  CircleDashed,
+  CircleDot,
+  FileText,
+  Loader2,
+  Lock,
+  PenLine,
+  Send,
+  ShieldCheck,
+  Wallet,
+  XCircle,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import { createWalletClient, custom, type Address } from "viem";
 import {
@@ -22,7 +34,7 @@ import type { PaymentRequired, SettlementResponse } from "@/lib/x402/types";
 import { decodeSettlementResponse } from "@/lib/x402/encode";
 
 /**
- * AI Agent × x402 payment demo.
+ * AI Agent × x402 payment demo — dark Web3 console.
  *
  * Runs a full x402 payment loop against the demo resource API:
  *  1. Agent posts a task → server answers 402 + PAYMENT-REQUIRED.
@@ -30,31 +42,51 @@ import { decodeSettlementResponse } from "@/lib/x402/encode";
  *  3. Agent's wallet signs an EIP-3009 transferWithAuthorization (gasless).
  *  4. Agent retries with PAYMENT-SIGNATURE → server verifies + settles.
  *  5. Server returns the job result + PAYMENT-RESPONSE receipt.
- *
- * The token address is configured server-side (env X402_TOKEN); for the demo
- * the client signs against the token the server advertises in the challenge,
- * so the panel works with zero client config.
  */
 
-function ThemeToggle() {
-  const { resolvedTheme, setTheme } = useTheme();
-  return (
-    <Button
-      variant="outline"
-      size="icon"
-      aria-label="Toggle theme"
-      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-    >
-      {resolvedTheme === "dark" ? "☀" : "☾"}
-    </Button>
-  );
-}
+const TASKS = [
+  { id: "generate-report", label: "generate-report", desc: "生成周报 · 结构化摘要" },
+  { id: "research-summary", label: "research-summary", desc: "研究摘要 · 多源综合" },
+  { id: "code-review", label: "code-review", desc: "代码审查 · 静态分析" },
+  { id: "data-insight", label: "data-insight", desc: "数据洞察 · 指标归因" },
+] as const;
+
+const FLOW = [
+  {
+    icon: Send,
+    title: "Agent 发起请求",
+    desc: "POST /api/agent-task，携带任务意图（无账号、无 API key）",
+  },
+  {
+    icon: Lock,
+    title: "收到 402 挑战",
+    desc: "服务端返回 PAYMENT-REQUIRED：金额 · 收款方 · 网络 · 超时",
+  },
+  {
+    icon: PenLine,
+    title: "钱包签名授权",
+    desc: "EIP-3009 transferWithAuthorization，离线签名 · 零 gas 费",
+  },
+  {
+    icon: CheckCircle2,
+    title: "链上结算完成",
+    desc: "服务端验签并广播结算，返回任务结果 + PAYMENT-RESPONSE 回执",
+  },
+] as const;
+
+type LedgerEntry = {
+  time: string;
+  task: string;
+  amount: string;
+  status: "CHALLENGED" | "SETTLED" | "FAILED";
+  tx?: string;
+};
 
 export function AgentPaymentsDemo() {
   const { address, provider, chain, status } = useAvaKit();
   const isConnected = status === "connected";
 
-  const [task, setTask] = useState("generate-report");
+  const [task, setTask] = useState<(typeof TASKS)[number]["id"]>("generate-report");
   const [busy, setBusy] = useState(false);
   const [step, setStep] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +94,7 @@ export function AgentPaymentsDemo() {
   const [signatureHeader, setSignatureHeader] = useState<string | null>(null);
   const [settlement, setSettlement] = useState<SettlementResponse | null>(null);
   const [job, setJob] = useState<Record<string, unknown> | null>(null);
+  const [ledger, setLedger] = useState<LedgerEntry[]>([]);
 
   const walletClient = useMemo(() => {
     if (!address || !provider) return null;
@@ -71,6 +104,8 @@ export function AgentPaymentsDemo() {
       account: address,
     });
   }, [address, provider, chain]);
+
+  const now = () => new Date().toLocaleTimeString("en-GB", { hour12: false });
 
   /** Step 1 — request the task without payment: expect a 402 challenge. */
   async function requestTask() {
@@ -92,6 +127,10 @@ export function AgentPaymentsDemo() {
         const required = parsePaymentRequired(res);
         setChallenge(required);
         setStep("api → agent: 402 + PAYMENT-REQUIRED");
+        setLedger((l) => [
+          { time: now(), task, amount: "0.001 AGT", status: "CHALLENGED" },
+          ...l,
+        ]);
       } else {
         const data = await res.json().catch(() => null);
         setError(`Expected 402 challenge, got ${res.status}`);
@@ -117,7 +156,7 @@ export function AgentPaymentsDemo() {
       const tokenName = (requirement.extra?.name as string) || "AgentToken";
 
       setStep("agent wallet: sign EIP-3009 transferWithAuthorization (gasless)");
-      const now = Math.floor(Date.now() / 1000);
+      const nowSec = Math.floor(Date.now() / 1000);
       const { auth, signature } = await signTransferWithAuthorization({
         walletClient,
         tokenAddress: asset,
@@ -126,8 +165,8 @@ export function AgentPaymentsDemo() {
           from: address,
           to: requirement.payTo as Address,
           value: requirement.amount,
-          validAfter: String(now - 60),
-          validBefore: String(now + 300),
+          validAfter: String(nowSec - 60),
+          validBefore: String(nowSec + 300),
         },
       });
 
@@ -152,138 +191,384 @@ export function AgentPaymentsDemo() {
       if (res.ok) {
         setJob(body as Record<string, unknown>);
         setStep("api → agent: 200 + job result + PAYMENT-RESPONSE");
+        setLedger((l) => [
+          { time: now(), task, amount: "0.001 AGT", status: "SETTLED", tx: settlement?.transaction },
+          ...l,
+        ]);
       } else {
         setError(body?.reason || `Payment rejected (${res.status})`);
+        setLedger((l) => [{ time: now(), task, amount: "0.001 AGT", status: "FAILED" }, ...l]);
       }
     } catch (e) {
       setError(humanizeError(e));
+      setLedger((l) => [{ time: now(), task, amount: "0.001 AGT", status: "FAILED" }, ...l]);
     } finally {
       setBusy(false);
     }
   }
 
-  return (
-    <div className="mx-auto flex min-h-dvh max-w-2xl flex-col gap-6 px-6 py-12">
-      <header className="flex items-center justify-between">
-        <span className="font-mono text-sm font-semibold">agent × x402 · avalanche</span>
-        <div className="flex items-center gap-2">
-          <ConnectAvalanche />
-          <ThemeToggle />
-        </div>
-      </header>
+  const stage =
+    step === null
+      ? 0
+      : step.includes("402")
+        ? 1
+        : step.includes("sign")
+          ? 2
+          : step.includes("200")
+            ? 4
+            : 3;
 
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          AI Agent 链上微支付底座 <span className="align-middle text-xs font-normal text-muted-foreground">x402 · EIP-3009 · Fuji</span>
-        </h1>
-        <p className="text-muted-foreground text-sm">
-          Agent 完成任务后通过 x402 协议自动发起链上微支付——无需账号、无需 API key、
-          无需订阅。签名 gasless（EIP-3009），结算由服务端广播，链上全程可审计。
-        </p>
+  return (
+    <div className="flex flex-col gap-5">
+      {/* ── Hero: what this is, why it matters ── */}
+      <section className="relative overflow-hidden rounded-2xl border border-white/8 bg-card/60 px-6 py-8 backdrop-blur">
+        <div className="pointer-events-none absolute -left-24 -top-32 size-80 rounded-full bg-primary/15 blur-[100px]" />
+        <div className="pointer-events-none absolute -right-16 -top-16 size-64 rounded-full bg-accent/12 blur-[90px]" />
+        <div className="relative flex flex-col gap-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 font-mono text-[10px] font-semibold text-primary">
+              ● x402 v2 · LIVE
+            </span>
+            <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 font-mono text-[10px] text-muted-foreground">
+              EIP-3009 gasless
+            </span>
+            <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 font-mono text-[10px] text-muted-foreground">
+              FUJI · 43113
+            </span>
+            <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 font-mono text-[10px] text-muted-foreground">
+              已部署 2 合约
+            </span>
+          </div>
+          <div className="flex flex-col gap-2">
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+              AI Agent 链上微支付底座
+            </h1>
+            <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
+              HTTP <span className="font-mono text-foreground">402</span> 即支付挑战 —— Agent 用{" "}
+              <span className="font-mono text-primary">EIP-3009</span> 离线签名付款，链上结算自动完成。
+              无需账号、无需 API key、无需订阅：把「付费能力」变成一行 HTTP 调用。
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Protocol flow: how it works ── */}
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {FLOW.map((f, i) => (
+          <div
+            key={f.title}
+            className="relative flex flex-col gap-2 rounded-xl border border-white/8 bg-card/60 p-4 backdrop-blur"
+          >
+            <div className="flex items-center justify-between">
+              <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                step {i + 1}
+              </span>
+              {i < 3 ? <ArrowDownRight className="size-3.5 text-white/20" /> : null}
+            </div>
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <f.icon className="size-4 text-primary" />
+              {f.title}
+            </div>
+            <p className="text-[11px] leading-relaxed text-muted-foreground">{f.desc}</p>
+          </div>
+        ))}
+      </section>
+
+      {/* ── Status bar ── */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/5 bg-card px-4 py-3 backdrop-blur">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Wallet className="size-3.5" />
+          {isConnected && address ? (
+            <span>
+              wallet <span className="font-mono text-foreground">{shortenAddress(address, 8)}</span>
+              <span className="mx-2 text-white/15">·</span>
+              chain <span className="font-mono text-foreground">{chain.name}</span>
+              <span className="mx-2 text-white/15">·</span>
+              price <span className="font-mono text-primary">0.001 AGT / task</span>
+            </span>
+          ) : (
+            <span>未连接钱包 —— 连接后解锁演示工作台（burner 零门槛）</span>
+          )}
+        </div>
+        <ConnectAvalanche />
       </div>
 
+      {/* ── Demo workspace ── */}
       {!isConnected || !address || !provider ? (
-        <div className="text-muted-foreground rounded-xl border border-dashed p-10 text-center text-sm">
-          连接钱包后即可演示 Agent 支付闭环（burner 钱包零门槛可试）。
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-primary/25 bg-primary/4 px-10 py-12 text-center backdrop-blur">
+          <Lock className="size-6 text-primary" />
+          <p className="text-sm font-medium text-foreground">演示工作台已锁定</p>
+          <p className="max-w-md text-xs leading-relaxed text-muted-foreground">
+            连接钱包后即可现场跑通完整闭环：发起任务 → 收到 402 支付挑战 →
+            签名 EIP-3009 → 验签结算 → 拿到任务结果与链上回执。
+          </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-5">
-          {/* Task input */}
-          <div className="flex flex-col gap-2 rounded-xl border p-5">
-            <label className="text-sm font-medium">Agent 任务（付费资源）</label>
-            <select
-              className="border-input bg-transparent rounded-md border px-3 py-2 text-sm"
-              value={task}
-              onChange={(e) => setTask(e.target.value)}
-            >
-              <option value="generate-report">generate-report — 生成周报</option>
-              <option value="research-summary">research-summary — 研究摘要</option>
-              <option value="code-review">code-review — 代码审查</option>
-              <option value="data-insight">data-insight — 数据洞察</option>
-            </select>
-            <Button disabled={busy} onClick={requestTask}>
+        <div className="grid items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)_340px]">
+          {/* ── Left: agent task list ── */}
+          <aside className="flex flex-col gap-3">
+            <SectionTitle>Agent 任务 · 付费资源</SectionTitle>
+            <div className="flex flex-col gap-2">
+              {TASKS.map((t) => {
+                const active = t.id === task;
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => setTask(t.id)}
+                    className={
+                      active
+                        ? "flex flex-col gap-0.5 rounded-lg border border-primary/40 bg-primary/8 p-3 text-left transition"
+                        : "flex flex-col gap-0.5 rounded-lg border border-white/5 bg-card p-3 text-left transition hover:border-white/15"
+                    }
+                  >
+                    <span className="flex items-center gap-2 font-mono text-xs font-medium">
+                      {active ? (
+                        <CircleDot className="size-3 text-primary" />
+                      ) : (
+                        <FileText className="size-3 text-muted-foreground" />
+                      )}
+                      {t.label}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">{t.desc}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <Button disabled={busy} onClick={requestTask} className="mt-1 w-full">
               {busy && step?.startsWith("agent → api") ? <Loader2 className="animate-spin" /> : null}
-              ① 发起任务（触发 402）
+              ① 发起任务 · 触发 402
             </Button>
-          </div>
-
-          {/* Challenge card */}
-          {challenge ? (
-            <div className="flex flex-col gap-3 rounded-xl border border-amber-500/40 bg-amber-500/5 p-5">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <Lock className="size-4" /> HTTP 402 Payment Required
-              </div>
-              {challenge.accepts.map((r) => (
-                <div key={r.network + r.asset} className="flex flex-col gap-1 rounded-lg bg-background/60 p-3 text-xs">
-                  <Row label="scheme" value={r.scheme} mono />
-                  <Row label="network" value={r.network} mono />
-                  <Row label="amount" value={formatAmount(r.amount, (r.extra?.decimals as number) ?? 18)} mono />
-                  <Row label="asset" value={r.asset} mono />
-                  <Row label="payTo" value={shortenAddress(r.payTo, 8)} mono />
-                </div>
-              ))}
-              <Button disabled={busy} onClick={payAndRetry} variant="default">
-                {busy && step?.startsWith("agent wallet") ? <Loader2 className="animate-spin" /> : null}
-                ② 签名授权并支付（EIP-3009，gasless）
-              </Button>
-            </div>
-          ) : null}
-
-          {/* Progress / result */}
-          {step ? (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <ArrowDown className="size-3" /> <span className="font-mono">{step}</span>
-            </div>
-          ) : null}
-
-          {signatureHeader ? (
-            <div className="flex flex-col gap-2 rounded-xl border border-green-500/40 bg-green-500/5 p-4">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <ShieldCheck className="size-4" /> PAYMENT-SIGNATURE 已生成
-              </div>
-              <p className="font-mono break-all text-[10px] text-muted-foreground">{signatureHeader}</p>
-            </div>
-          ) : null}
-
-          {settlement ? (
-            <div className="flex flex-col gap-2 rounded-xl border border-green-500/40 bg-green-500/5 p-4 text-xs">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <CheckCircle2 className="size-4" /> 结算回执（PAYMENT-RESPONSE）
-              </div>
-              <Row label="success" value={String(settlement.success)} mono />
-              <Row label="tx" value={shortenAddress(settlement.transaction, 10)} mono />
-              <Row label="network" value={settlement.network} mono />
-              {settlement.payer ? <Row label="payer" value={shortenAddress(settlement.payer, 8)} mono /> : null}
-            </div>
-          ) : null}
-
-          {job ? (
-            <div className="flex flex-col gap-2 rounded-xl border p-5">
-              <div className="text-sm font-medium">任务结果（已付费解锁）</div>
-              <pre className="bg-muted rounded-md p-3 text-[11px] overflow-auto">
-                {JSON.stringify(job, null, 2)}
-              </pre>
-            </div>
-          ) : null}
-
-          {error ? (
-            <p className="border-destructive text-destructive rounded-md border px-3 py-2 text-sm font-medium">
-              {error}
+            <p className="text-center font-mono text-[10px] text-muted-foreground">
+              POST /api/agent-task
             </p>
-          ) : null}
+          </aside>
+
+          {/* ── Center: payment flow ── */}
+          <section className="flex flex-col gap-4">
+            {challenge ? (
+              <div className="flex flex-col gap-3 overflow-hidden rounded-xl border border-amber-400/25 bg-card backdrop-blur">
+                <div className="flex items-center justify-between border-b border-white/5 bg-amber-400/8 px-4 py-2.5">
+                  <span className="flex items-center gap-2 text-sm font-semibold text-amber-300">
+                    <Lock className="size-4" /> HTTP 402 · PAYMENT REQUIRED
+                  </span>
+                  <span className="font-mono text-[10px] text-muted-foreground">
+                    x402 v2 · eip155:43113
+                  </span>
+                </div>
+                {challenge.accepts.map((r) => (
+                  <div key={r.network + r.asset} className="flex flex-col gap-3 px-4 pb-4">
+                    <div className="flex items-end justify-between">
+                      <span className="text-xs text-muted-foreground">amount</span>
+                      <span className="font-mono text-3xl font-semibold tracking-tight text-primary">
+                        {formatAmount(r.amount, (r.extra?.decimals as number) ?? 18)}{" "}
+                        <span className="text-base text-muted-foreground">AGT</span>
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-1.5 rounded-lg border border-white/5 bg-background/50 p-3 text-xs">
+                      <Field label="scheme" value={r.scheme} mono />
+                      <Field label="network" value={r.network} mono />
+                      <Field label="asset" value={shortenAddress(r.asset, 10)} mono full={r.asset} />
+                      <Field label="payTo" value={shortenAddress(r.payTo, 10)} mono full={r.payTo} />
+                      <Field label="timeout" value={`${r.maxTimeoutSeconds}s`} mono />
+                    </div>
+                    <Button disabled={busy} onClick={payAndRetry} className="w-full">
+                      {busy && step?.startsWith("agent wallet") ? (
+                        <Loader2 className="animate-spin" />
+                      ) : (
+                        <ShieldCheck className="size-4" />
+                      )}
+                      ② 签名授权并支付（EIP-3009 · gasless）
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-white/10 bg-card/40 px-6 py-16 text-center backdrop-blur">
+                <CircleDashed className="size-6 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  选择左侧任务并点击「发起任务」—— 服务端将返回 402 + 支付挑战
+                </p>
+              </div>
+            )}
+
+            {signatureHeader ? (
+              <div className="flex flex-col gap-2 rounded-xl border border-primary/30 bg-primary/6 p-4 backdrop-blur">
+                <div className="flex items-center gap-2 text-sm font-medium text-primary">
+                  <ShieldCheck className="size-4" /> PAYMENT-SIGNATURE 已生成（EIP-3009）
+                </div>
+                <p className="break-all font-mono text-[10px] leading-relaxed text-muted-foreground">
+                  {signatureHeader}
+                </p>
+              </div>
+            ) : null}
+
+            {settlement ? (
+              <div className="flex flex-col gap-2 rounded-xl border border-primary/30 bg-primary/6 p-4 text-xs backdrop-blur">
+                <div className="flex items-center gap-2 text-sm font-medium text-primary">
+                  <CheckCircle2 className="size-4" /> 结算回执 · PAYMENT-RESPONSE
+                </div>
+                <Field label="success" value={String(settlement.success)} mono />
+                <Field
+                  label="tx"
+                  value={shortenAddress(settlement.transaction, 12)}
+                  mono
+                  full={settlement.transaction}
+                />
+                <Field label="network" value={settlement.network} mono />
+                {settlement.payer ? (
+                  <Field label="payer" value={shortenAddress(settlement.payer, 8)} mono />
+                ) : null}
+              </div>
+            ) : null}
+
+            {job ? (
+              <div className="flex flex-col gap-2 rounded-xl border border-white/5 bg-card p-4 backdrop-blur">
+                <div className="text-sm font-medium">任务结果 · 已付费解锁</div>
+                <pre className="max-h-64 overflow-auto rounded-md border border-white/5 bg-background/70 p-3 font-mono text-[11px] leading-relaxed text-foreground/90">
+                  {JSON.stringify(job, null, 2)}
+                </pre>
+              </div>
+            ) : null}
+
+            {error ? (
+              <p className="rounded-lg border border-red-400/30 bg-red-400/10 px-3 py-2 text-sm font-medium text-red-300">
+                {error}
+              </p>
+            ) : null}
+          </section>
+
+          {/* ── Right: on-chain ledger ── */}
+          <aside className="flex flex-col gap-3">
+            <SectionTitle>链上流水 · 本会话</SectionTitle>
+            <div className="flex flex-col gap-1.5 rounded-xl border border-white/5 bg-card p-3 backdrop-blur">
+              {ledger.length === 0 ? (
+                <p className="py-6 text-center font-mono text-[11px] text-muted-foreground">
+                  no payments yet
+                </p>
+              ) : (
+                ledger.map((e, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between gap-2 rounded-md border border-white/5 bg-background/40 px-2.5 py-2 text-[11px]"
+                  >
+                    <div className="flex min-w-0 flex-col">
+                      <span className="truncate font-mono text-foreground/90">{e.task}</span>
+                      <span className="text-[10px] text-muted-foreground">{e.time}</span>
+                    </div>
+                    <div className="flex shrink-0 flex-col items-end gap-0.5">
+                      <span className="font-mono text-primary">{e.amount}</span>
+                      <LedgerBadge status={e.status} />
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="flex flex-col gap-1.5 rounded-xl border border-white/5 bg-card p-3 font-mono text-[10px] text-muted-foreground backdrop-blur">
+              <div className="mb-0.5 text-[10px] uppercase tracking-wider text-muted-foreground/60">
+                Deployed contracts · Fuji
+              </div>
+              <Field label="token" value={shortenAddress(process.env.NEXT_PUBLIC_X402_TOKEN || "", 10)} mono />
+              <Field
+                label="payments"
+                value={shortenAddress(process.env.NEXT_PUBLIC_X402_PAYTO || "", 10)}
+                mono
+              />
+            </div>
+          </aside>
         </div>
       )}
 
-      <footer className="flex items-center gap-2 border-t pt-4 text-xs text-muted-foreground">
-        <Wallet className="size-3" />
-        {isConnected && address ? (
-          <span>
-            wallet: {shortenAddress(address, 6)} · chain: {chain.name} (43113)
+      {/* ── Bottom: settlement status flow ── */}
+      <footer className="flex flex-col gap-3 rounded-xl border border-white/5 bg-card px-6 py-4 backdrop-blur">
+        <div className="flex items-center justify-between gap-2">
+          {["402 CHALLENGE", "SIGNED", "VERIFIED", "SETTLED"].map((label, i) => {
+            const node = i + 1;
+            const done = stage >= node;
+            const current = stage === node;
+            return (
+              <div key={label} className="flex flex-1 items-center gap-2">
+                <div
+                  className={
+                    current
+                      ? "flex items-center gap-1.5 rounded-full border border-primary/50 bg-primary/10 px-3 py-1 font-mono text-[11px] font-semibold text-primary shadow-[0_0_14px_-2px_var(--color-primary)]"
+                      : done
+                        ? "flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 font-mono text-[11px] text-primary/80"
+                        : "flex items-center gap-1.5 rounded-full border border-white/8 bg-white/3 px-3 py-1 font-mono text-[11px] text-muted-foreground"
+                  }
+                >
+                  {done ? (
+                    <CheckCircle2 className="size-3" />
+                  ) : current ? (
+                    <CircleDot className="size-3" />
+                  ) : (
+                    <CircleDashed className="size-3" />
+                  )}
+                  {label}
+                </div>
+                {i < 3 ? <div className="h-px flex-1 bg-white/8" /> : null}
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+          <span className="font-mono">
+            {step ?? "idle — connect wallet, pick a task, start the loop"}
           </span>
-        ) : (
-          <span>未连接钱包</span>
-        )}
+          <span className="hidden items-center gap-1 sm:flex">
+            <ArrowDownRight className="size-3" /> gasless settle · on-chain auditable
+          </span>
+        </div>
       </footer>
+    </div>
+  );
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="flex items-center gap-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <span className="size-1 rounded-full bg-primary" />
+      {children}
+    </h2>
+  );
+}
+
+function LedgerBadge({ status }: { status: LedgerEntry["status"] }) {
+  if (status === "SETTLED")
+    return (
+      <span className="flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.5 font-mono text-[9px] text-primary">
+        SETTLED
+      </span>
+    );
+  if (status === "FAILED")
+    return (
+      <span className="flex items-center gap-1 rounded-full border border-red-400/30 bg-red-400/10 px-1.5 py-0.5 font-mono text-[9px] text-red-300">
+        FAILED
+      </span>
+    );
+  return (
+    <span className="flex items-center gap-1 rounded-full border border-amber-400/30 bg-amber-400/10 px-1.5 py-0.5 font-mono text-[9px] text-amber-300">
+      CHALLENGED
+    </span>
+  );
+}
+
+function Field({
+  label,
+  value,
+  mono,
+  full,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+  full?: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-muted-foreground">{label}</span>
+      <span className={mono ? "truncate font-mono text-foreground/90" : "text-foreground/90"} title={full}>
+        {value}
+      </span>
     </div>
   );
 }
@@ -298,13 +583,4 @@ function formatAmount(atomic: string, decimals: number): string {
   } catch {
     return atomic;
   }
-}
-
-function Row({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <div className="flex items-center justify-between gap-4">
-      <span className="text-muted-foreground">{label}</span>
-      <span className={mono ? "font-mono" : ""}>{value}</span>
-    </div>
-  );
 }

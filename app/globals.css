@@ -7,53 +7,35 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Black & white only (oklch chroma 0 = pure grayscale). Dark/light wired from
- * day one via next-themes. Add brand colors later by editing these tokens —
- * components never hardcode colors.
+ * Dark Web3 theme — deep navy base (#0B0E14 family), neon mint primary
+ * (#00E5A0) + violet accent (#7C6CFF), glassy cards, fixed dark (single set of
+ * tokens for :root and .dark so the demo looks identical everywhere).
+ * Design language referenced from: Etherscan (data density, mono addresses),
+ * Phantom / MetaMask (deep surfaces, status pills, glow accents),
+ * Linear / Vercel (restrained spacing, hairline borders, clear hierarchy).
  */
-:root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.3 0 0);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-}
-
+:root,
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.7 0 0);
-  --destructive-foreground: oklch(0.205 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --radius: 0.75rem;
+  --background: oklch(0.155 0.012 255);
+  --foreground: oklch(0.955 0.004 255);
+  --card: oklch(0.2 0.015 255 / 72%);
+  --card-foreground: oklch(0.955 0.004 255);
+  --popover: oklch(0.21 0.016 255);
+  --popover-foreground: oklch(0.955 0.004 255);
+  --primary: oklch(0.83 0.19 165);
+  --primary-foreground: oklch(0.16 0.02 255);
+  --secondary: oklch(0.27 0.02 255);
+  --secondary-foreground: oklch(0.955 0.004 255);
+  --muted: oklch(0.25 0.015 255);
+  --muted-foreground: oklch(0.66 0.02 255);
+  --accent: oklch(0.66 0.2 280);
+  --accent-foreground: oklch(0.16 0.02 255);
+  --destructive: oklch(0.62 0.24 25);
+  --destructive-foreground: oklch(0.98 0.01 25);
+  --border: oklch(1 0 0 / 9%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.83 0.19 165 / 60%);
 }
 
 @theme inline {
@@ -90,6 +72,10 @@
   }
   body {
     background-color: var(--background);
+    background-image:
+      radial-gradient(1100px 560px at 12% -8%, oklch(0.45 0.15 165 / 14%), transparent 62%),
+      radial-gradient(900px 500px at 92% 0%, oklch(0.52 0.19 280 / 11%), transparent 58%);
+    background-attachment: fixed;
     color: var(--foreground);
   }
 }
