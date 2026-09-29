@@ -291,15 +291,47 @@ export function AgentPaymentsDemo() {
         <ConnectAvalanche />
       </div>
 
-      {/* ── Demo workspace ── */}
+      {/* ── Login gate (not connected) ── */}
       {!isConnected || !address || !provider ? (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-primary/25 bg-primary/4 px-10 py-12 text-center backdrop-blur">
-          <Lock className="size-6 text-primary" />
-          <p className="text-sm font-medium text-foreground">演示工作台已锁定</p>
-          <p className="max-w-md text-xs leading-relaxed text-muted-foreground">
-            连接钱包后即可现场跑通完整闭环：发起任务 → 收到 402 支付挑战 →
-            签名 EIP-3009 → 验签结算 → 拿到任务结果与链上回执。
-          </p>
+        <div className="flex flex-col gap-6 rounded-2xl border border-white/8 bg-card/40 px-6 py-12 backdrop-blur sm:px-10">
+          <div className="flex flex-col items-center gap-2 text-center">
+            <h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+              连接钱包，解锁演示工作台
+            </h2>
+            <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
+              这里没有传统账号密码——<span className="text-foreground">连接钱包就是登录</span>。
+              三种方式任选其一，30 秒进入演示。
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            {[
+              {
+                title: "什么是 x402",
+                desc: "AI Agent 之间的 HTTP 支付协议（Linux 基金会标准，Visa / Stripe / AWS 等 40 家成员推动）",
+              },
+              {
+                title: "演示什么",
+                desc: "0.001 AGT 现场跑通「发起任务 → 402 挑战 → 签名 → 链上结算」完整闭环",
+              },
+              {
+                title: "链上可审计",
+                desc: "每笔支付上链（Avalanche Fuji），合约已部署、地址页可见，结算回执可查",
+              },
+            ].map((c) => (
+              <div key={c.title} className="flex flex-col gap-1.5 rounded-xl border border-white/8 bg-background/50 p-4 text-left">
+                <span className="text-sm font-semibold text-foreground">{c.title}</span>
+                <span className="text-[11px] leading-relaxed text-muted-foreground">{c.desc}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex flex-col items-center gap-2">
+            <ConnectAvalanche />
+            <p className="text-center font-mono text-[10px] text-muted-foreground">
+              0.001 AGT / task · gasless EIP-3009 · 无需 API key / 订阅
+            </p>
+          </div>
         </div>
       ) : (
         <div className="grid items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)_340px]">

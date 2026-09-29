@@ -52,7 +52,7 @@ export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="dark" disableTransitionOnChange>
+    <ThemeProvider attribute="class" defaultTheme="dark" forcedTheme="dark" disableTransitionOnChange>
       <QueryClientProvider client={queryClient}>
         <WagmiProvider config={wagmiConfig}>
           <AvaKitProvider chains={[fuji]} adapters={adapters}>

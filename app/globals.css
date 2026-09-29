@@ -16,6 +16,7 @@
  */
 :root,
 .dark {
+  color-scheme: dark;
   --radius: 0.75rem;
   --background: oklch(0.155 0.012 255);
   --foreground: oklch(0.955 0.004 255);
@@ -72,10 +73,6 @@
   }
   body {
     background-color: var(--background);
-    background-image:
-      radial-gradient(1100px 560px at 12% -8%, oklch(0.45 0.15 165 / 14%), transparent 62%),
-      radial-gradient(900px 500px at 92% 0%, oklch(0.52 0.19 280 / 11%), transparent 58%);
-    background-attachment: fixed;
     color: var(--foreground);
   }
 }
