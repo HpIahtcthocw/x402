@@ -14,11 +14,16 @@ import {
   parseUnits,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { fuji } from "@avakit/core/chains";
 import { toViemChain } from "@avakit/core";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const FUJI_RPC = "https://api.avax-test.network/ext/bc/C/rpc";
+const BASE_RPC = "https://sepolia.base.org";
+const BASE_CHAIN = {
+  id: 84532,
+  name: "Base Sepolia",
+  rpcUrl: BASE_RPC,
+  nativeCurrency: { name: "Base", symbol: "ETH", decimals: 18 },
+};
 
 const key = process.env.DEPLOYER_PRIVATE_KEY;
 const token = process.env.TOKEN;
@@ -30,10 +35,10 @@ if (!key || !/^0x[0-9a-fA-F]{64}$/.test(key) || !token || !to) {
   process.exit(1);
 }
 
-const chain = toViemChain(fuji);
+const chain = toViemChain(BASE_CHAIN);
 const account = privateKeyToAccount(key);
-const publicClient = createPublicClient({ chain, transport: http(FUJI_RPC) });
-const walletClient = createWalletClient({ chain, transport: http(FUJI_RPC), account });
+const publicClient = createPublicClient({ chain, transport: http(BASE_RPC) });
+const walletClient = createWalletClient({ chain, transport: http(BASE_RPC), account });
 
 const abi = parseAbi(["function mint(address to, uint256 value)"]);
 

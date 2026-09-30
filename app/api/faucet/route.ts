@@ -8,7 +8,7 @@ import {
   parseUnits,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { fuji } from "@avakit/core/chains";
+import { baseSepolia } from "@/lib/chain";
 import { toViemChain } from "@avakit/core";
 import { X402_NETWORK, X402_TOKEN_ADDRESS, X402_DEMO } from "@/lib/x402/config";
 
@@ -20,8 +20,8 @@ import { X402_NETWORK, X402_TOKEN_ADDRESS, X402_DEMO } from "@/lib/x402/config";
  * on AgentToken; the facilitator key pays gas.
  *
  * - Demo mode (default): returns a mock receipt, no on-chain tx.
- * - Production mode (X402_DEMO=false): broadcasts a real mint tx on Fuji and
- *   returns the transaction hash.
+ * - Production mode (X402_DEMO=false): broadcasts a real mint tx on Base
+ *   Sepolia and returns the transaction hash.
  */
 export async function POST(req: Request) {
   let body: { address?: string };
@@ -56,7 +56,7 @@ export async function POST(req: Request) {
     });
   }
 
-  const chain = toViemChain(fuji);
+  const chain = toViemChain(baseSepolia);
   const account = privateKeyToAccount(privateKey as `0x${string}`);
   const publicClient = createPublicClient({ chain, transport: http() });
   const walletClient = createWalletClient({ chain, transport: http(), account });

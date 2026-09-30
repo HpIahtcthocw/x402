@@ -21,7 +21,7 @@ export default function Home() {
               ● LIVE
             </span>
             <span className="hidden rounded-full border border-white/10 bg-white/5 px-2 py-0.5 font-mono text-[10px] text-muted-foreground md:inline-block">
-              FUJI · 43113
+              BASE · 84532
             </span>
           </div>
         </div>

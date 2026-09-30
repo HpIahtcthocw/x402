@@ -1,4 +1,4 @@
-// Deploy the x402 settlement stack to Avalanche Fuji:
+// Deploy the x402 settlement stack to Base Sepolia (Colosseum 分支):
 //   1. AgentToken  — EIP-3009 ERC-20 (settlement asset)
 //   2. AgentPayments — pool that records + holds micropayments
 //
@@ -13,26 +13,31 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createPublicClient, createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { fuji } from "@avakit/core/chains";
 import { toViemChain } from "@avakit/core";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const FUJI_RPC = "https://api.avax-test.network/ext/bc/C/rpc";
+const BASE_RPC = "https://sepolia.base.org";
+const BASE_CHAIN = {
+  id: 84532,
+  name: "Base Sepolia",
+  rpcUrl: BASE_RPC,
+  nativeCurrency: { name: "Base", symbol: "ETH", decimals: 18 },
+};
 
 const key = process.env.DEPLOYER_PRIVATE_KEY;
 if (!key || !/^0x[0-9a-fA-F]{64}$/.test(key)) {
   console.error(
     "\nDEPLOYER_PRIVATE_KEY is not set (or not a 0x-prefixed 32-byte hex key).\n\n" +
-      "Fund a throwaway wallet with Fuji test AVAX (faucet: https://build.avax.network/console/primary-network/faucet), then:\n\n" +
+      "Fund a throwaway wallet with Base Sepolia test ETH (faucet: https://faucets.chain.link/base-sepolia), then:\n\n" +
       "  DEPLOYER_PRIVATE_KEY=0x... node scripts/deploy-x402.mjs\n",
   );
   process.exit(1);
 }
 
-const chain = toViemChain(fuji);
+const chain = toViemChain(BASE_CHAIN);
 const account = privateKeyToAccount(key);
-const publicClient = createPublicClient({ chain, transport: http(FUJI_RPC) });
-const walletClient = createWalletClient({ chain, transport: http(FUJI_RPC), account });
+const publicClient = createPublicClient({ chain, transport: http(BASE_RPC) });
+const walletClient = createWalletClient({ chain, transport: http(BASE_RPC), account });
 
 const artifact = (name) => JSON.parse(
   readFileSync(join(root, "scripts", "artifacts", `${name}.json`), "utf8"),
@@ -59,7 +64,7 @@ async function main() {
   const token = await deploy("AgentToken", ["AgentToken", "AGT"]);
   const pool = await deploy("AgentPayments", []);
 
-  console.log("\n===== DEPLOYED (Fuji) =====");
+  console.log("\n===== DEPLOYED (Base Sepolia) =====");
   console.log(`AgentToken:    ${token}`);
   console.log(`AgentPayments: ${pool}`);
   console.log("\nNext steps:");

@@ -10,13 +10,18 @@
 // Run: node scripts/smoke-x402.mjs [baseUrl]
 import { createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { fuji } from "@avakit/core/chains";
 import { toViemChain } from "@avakit/core";
 
 const BASE = process.argv[2] || "http://localhost:3111";
 const KEY = process.env.TEST_PRIVATE_KEY || "0x" + "11".repeat(32);
 
-const chain = toViemChain(fuji);
+const BASE_CHAIN = {
+  id: 84532,
+  name: "Base Sepolia",
+  rpcUrl: "https://sepolia.base.org",
+  nativeCurrency: { name: "Base", symbol: "ETH", decimals: 18 },
+};
+const chain = toViemChain(BASE_CHAIN);
 const account = privateKeyToAccount(KEY);
 const walletClient = createWalletClient({ chain, transport: http(), account });
 

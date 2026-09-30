@@ -1,7 +1,7 @@
 "use client";
 
 import { type WalletAdapter, burnerAdapter, injectedAdapter, toViemChain } from "@avakit/core";
-import { fuji } from "@avakit/core/chains";
+import { baseSepolia } from "@/lib/chain";
 import { web3authAdapter } from "@avakit/core/web3auth";
 import { AvaKitProvider } from "@avakit/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -23,14 +23,14 @@ export function Providers({ children }: { children: ReactNode }) {
     list.push(
       web3authAdapter({
         clientId: process.env.NEXT_PUBLIC_WEB3AUTH_CLIENT_ID || DEMO_WEB3AUTH_CLIENT_ID,
-        chains: [fuji],
+        chains: [baseSepolia],
       }),
     );
     // Injected (Core / MetaMask) is always available.
     list.push(injectedAdapter());
     // Zero-config fallback: a temporary in-browser wallet so a new user can try
     // everything with no setup. The wallets above are the bring-your-own upgrade.
-    list.push(burnerAdapter({ chain: fuji }));
+    list.push(burnerAdapter({ chain: baseSepolia }));
     return list;
   }, []);
 
@@ -39,14 +39,14 @@ export function Providers({ children }: { children: ReactNode }) {
   // purely to satisfy those reads. Wallet connect/sign still goes through
   // AvaKitProvider's adapters (Web3Auth / injected) — wagmi never owns the
   // account here, it only provides an RPC-backed read client. Derive the wagmi
-  // chain from the same fuji AvaKit uses, so the two never diverge.
+  // chain from the same Base chain AvaKit uses, so the two never diverge.
   // (The shared eERC contract in lib/eerc-config.ts only exists on Fuji — deploy
   // your own instance to use another chain; see CLAUDE.md.)
   const [wagmiConfig] = useState(() => {
-    const viemChain = toViemChain(fuji);
+    const viemChain = toViemChain(baseSepolia);
     return createConfig({
       chains: [viemChain],
-      transports: { [viemChain.id]: http(fuji.rpcUrl) },
+      transports: { [viemChain.id]: http("https://sepolia.base.org") },
     });
   });
   const [queryClient] = useState(() => new QueryClient());
@@ -55,7 +55,7 @@ export function Providers({ children }: { children: ReactNode }) {
     <ThemeProvider attribute="class" defaultTheme="dark" forcedTheme="dark" disableTransitionOnChange>
       <QueryClientProvider client={queryClient}>
         <WagmiProvider config={wagmiConfig}>
-          <AvaKitProvider chains={[fuji]} adapters={adapters}>
+          <AvaKitProvider chains={[baseSepolia]} adapters={adapters}>
             {children}
           </AvaKitProvider>
         </WagmiProvider>

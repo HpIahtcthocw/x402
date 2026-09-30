@@ -10,12 +10,12 @@ import type { Address } from "viem";
  */
 
 export const X402_NETWORK = {
-  /** CAIP-2 identifier — Avalanche Fuji C-Chain. */
-  caip2: "eip155:43113" as const,
-  chainId: 43113,
-  name: "Avalanche Fuji",
-  rpc: "https://api.avax-test.network/ext/bc/C/rpc",
-  explorer: "https://testnet.snowtrace.io",
+  /** CAIP-2 identifier — Base Sepolia (Colosseum 分支). */
+  caip2: "eip155:84532" as const,
+  chainId: 84532,
+  name: "Base Sepolia",
+  rpc: "https://sepolia.base.org",
+  explorer: "https://sepolia.basescan.org",
 };
 
 /** Settlement token contract (AgentToken, EIP-3009). */
