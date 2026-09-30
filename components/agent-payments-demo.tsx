@@ -95,6 +95,8 @@ export function AgentPaymentsDemo() {
   const [settlement, setSettlement] = useState<SettlementResponse | null>(null);
   const [job, setJob] = useState<Record<string, unknown> | null>(null);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
+  const [faucetBusy, setFaucetBusy] = useState(false);
+  const [faucetMsg, setFaucetMsg] = useState<{ ok: boolean; text: string; tx?: string } | null>(null);
 
   const walletClient = useMemo(() => {
     if (!address || !provider) return null;
@@ -106,6 +108,34 @@ export function AgentPaymentsDemo() {
   }, [address, provider, chain]);
 
   const now = () => new Date().toLocaleTimeString("en-GB", { hour12: false });
+
+  /** Faucet — mint 1 AGT test token to the connected wallet (one click). */
+  async function claimAGT() {
+    if (!address) return;
+    setFaucetBusy(true);
+    setFaucetMsg(null);
+    try {
+      const res = await fetch("/api/faucet", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ address }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok) {
+        setFaucetMsg({ ok: false, text: data?.error || `Faucet error (${res.status})` });
+        return;
+      }
+      setFaucetMsg({
+        ok: true,
+        text: data.demo ? "Demo 模式 — 已模拟领取 1 AGT" : `已领取 1 AGT · tx ${(data.tx || "").slice(0, 12)}…`,
+        tx: data.tx,
+      });
+    } catch (e) {
+      setFaucetMsg({ ok: false, text: humanizeError(e) });
+    } finally {
+      setFaucetBusy(false);
+    }
+  }
 
   /** Step 1 — request the task without payment: expect a 402 challenge. */
   async function requestTask() {
@@ -337,6 +367,40 @@ export function AgentPaymentsDemo() {
         <div className="grid items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)_340px]">
           {/* ── Left: agent task list ── */}
           <aside className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1.5 rounded-xl border border-white/8 bg-card p-3 backdrop-blur">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-foreground">AGT 测试代币</span>
+                <span className="font-mono text-[10px] text-muted-foreground">Fuji faucet</span>
+              </div>
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                没余额？一键领取 1 AGT，即可真实支付跑通全链路。
+              </p>
+              <Button disabled={faucetBusy} onClick={claimAGT} className="w-full">
+                {faucetBusy ? <Loader2 className="size-4 animate-spin" /> : <CircleDot className="size-4" />}
+                {faucetBusy ? "领取中…" : "领取 1 AGT"}
+              </Button>
+              {faucetMsg ? (
+                <div
+                  className={
+                    faucetMsg.ok
+                      ? "flex flex-col gap-0.5 rounded-md border border-primary/20 bg-primary/8 px-2 py-1.5 text-[10px] text-primary"
+                      : "flex flex-col gap-0.5 rounded-md border border-red-400/30 bg-red-400/10 px-2 py-1.5 text-[10px] text-red-300"
+                  }
+                >
+                  <span>{faucetMsg.text}</span>
+                  {faucetMsg.ok && faucetMsg.tx ? (
+                    <a
+                      href={`https://testnet.snowtrace.io/tx/${faucetMsg.tx}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline underline-offset-2"
+                    >
+                      testnet.snowtrace.io/tx/{faucetMsg.tx.slice(0, 10)}… ↗
+                    </a>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
             <SectionTitle>Agent 任务 · 付费资源</SectionTitle>
             <div className="flex flex-col gap-2">
               {TASKS.map((t) => {
