@@ -45,6 +45,7 @@ import { decodeSettlementResponse, encodePaymentPayload } from "@/lib/x402/encod
  */
 
 const TASKS = [
+  { id: "buy-order", label: "buy-order", desc: "AI 代购 · 下单即自动结算" },
   { id: "generate-report", label: "generate-report", desc: "生成周报 · 结构化摘要" },
   { id: "research-summary", label: "research-summary", desc: "研究摘要 · 多源综合" },
   { id: "code-review", label: "code-review", desc: "代码审查 · 静态分析" },
@@ -86,7 +87,7 @@ export function AgentPaymentsDemo() {
   const { address, provider, chain, status } = useAvaKit();
   const isConnected = status === "connected";
 
-  const [task, setTask] = useState<(typeof TASKS)[number]["id"]>("generate-report");
+  const [task, setTask] = useState<(typeof TASKS)[number]["id"]>("buy-order");
   const [busy, setBusy] = useState(false);
   const [step, setStep] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -181,7 +182,7 @@ export function AgentPaymentsDemo() {
     setJob(null);
     setSettlement(null);
     try {
-      const requirement = pickRequirement(challenge, { scheme: "exact", network: "eip155:43113" });
+      const requirement = pickRequirement(challenge, { scheme: "exact", network: "eip155:84532" });
       const asset = requirement.asset as Address;
       const tokenName = (requirement.extra?.name as string) || "AgentToken";
 
@@ -261,7 +262,7 @@ export function AgentPaymentsDemo() {
               EIP-3009 gasless
             </span>
             <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 font-mono text-[10px] text-muted-foreground">
-              FUJI · 43113
+              BASE · 84532
             </span>
             <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 font-mono text-[10px] text-muted-foreground">
               已部署 2 合约
@@ -269,14 +270,14 @@ export function AgentPaymentsDemo() {
           </div>
           <div className="flex flex-col gap-2">
             <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-              AI Agent 链上微支付底座
+              AI 代购自动结算 · Stripe for Agents
             </h1>
             <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
               HTTP <span className="font-mono text-foreground">402</span> 即支付挑战 —— Agent 用{" "}
               <span className="font-mono text-primary">EIP-3009</span> 离线签名付款，链上结算自动完成。
-              无需账号、无需 API key、无需订阅：把「付费能力」变成一行 HTTP 调用。
-              典型场景：数据分析 Agent 按次付费调用数据 API、IoT 设备为单次推理付费、
-              电商 Agent 为每次代下单自动结算——机器真正「自己赚钱、自己花钱」。
+              Agent 替用户下单，成交即自动向服务商收款池结算：每笔可审计、可对账、可退款。
+              无需账号、无需 API key、无需订阅：把「收钱能力」变成一行 HTTP 调用。
+              典型场景：AI 代购自动结算、数据分析按次付费、IoT 设备单次推理付费。
             </p>
           </div>
         </div>
@@ -348,7 +349,7 @@ export function AgentPaymentsDemo() {
               },
               {
                 title: "链上可审计",
-                desc: "每笔支付上链（Avalanche Fuji），AgentPayments 收款池记录逐笔 paymentId → payer/amount/token，支持对账与退款",
+                desc: "每笔支付上链（Base Sepolia），AgentPayments 收款池记录逐笔 paymentId → payer/amount/token，支持对账与退款",
               },
             ].map((c) => (
               <div key={c.title} className="flex flex-col gap-1.5 rounded-xl border border-white/8 bg-background/50 p-4 text-left">
@@ -372,7 +373,7 @@ export function AgentPaymentsDemo() {
             <div className="flex flex-col gap-1.5 rounded-xl border border-white/8 bg-card p-3 backdrop-blur">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-semibold text-foreground">AGT 测试代币</span>
-                <span className="font-mono text-[10px] text-muted-foreground">Fuji faucet</span>
+                <span className="font-mono text-[10px] text-muted-foreground">Base Sepolia faucet</span>
               </div>
               <p className="text-[11px] leading-relaxed text-muted-foreground">
                 没余额？一键领取 1 AGT，即可真实支付跑通全链路。
@@ -392,12 +393,12 @@ export function AgentPaymentsDemo() {
                   <span>{faucetMsg.text}</span>
                   {faucetMsg.ok && faucetMsg.tx ? (
                     <a
-                      href={`https://testnet.snowtrace.io/tx/${faucetMsg.tx}`}
+                      href={`https://sepolia.basescan.org/tx/${faucetMsg.tx}`}
                       target="_blank"
                       rel="noreferrer"
                       className="underline underline-offset-2"
                     >
-                      testnet.snowtrace.io/tx/{faucetMsg.tx.slice(0, 10)}… ↗
+                      sepolia.basescan.org/tx/{faucetMsg.tx.slice(0, 10)}… ↗
                     </a>
                   ) : null}
                 </div>
@@ -448,7 +449,7 @@ export function AgentPaymentsDemo() {
                     <Lock className="size-4" /> HTTP 402 · PAYMENT REQUIRED
                   </span>
                   <span className="font-mono text-[10px] text-muted-foreground">
-                    x402 v2 · eip155:43113
+                    x402 v2 · eip155:84532
                   </span>
                 </div>
                 {challenge.accepts.map((r) => (
@@ -533,8 +534,28 @@ export function AgentPaymentsDemo() {
             ) : null}
           </section>
 
-          {/* ── Right: on-chain ledger ── */}
+          {/* ── Right: payee pool + on-chain ledger ── */}
           <aside className="flex flex-col gap-3">
+            <SectionTitle>收款池 · Payee Pool</SectionTitle>
+            <div className="flex flex-col gap-2 rounded-xl border border-primary/25 bg-primary/5 p-3 backdrop-blur">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-muted-foreground">累计入池</span>
+                <span className="font-mono font-semibold text-primary">
+                  {ledger.filter((e) => e.status === "SETTLED").length} 笔 ·{" "}
+                  {ledger.filter((e) => e.status === "SETTLED").length * 0.001} AGT
+                </span>
+              </div>
+              <Field
+                label="pool"
+                value={shortenAddress(process.env.NEXT_PUBLIC_X402_PAYTO || "", 12)}
+                mono
+                full={process.env.NEXT_PUBLIC_X402_PAYTO}
+              />
+              <div className="mt-0.5 flex items-center gap-1.5 rounded-md border border-white/5 bg-background/50 px-2 py-1.5 text-[10px] text-muted-foreground">
+                <CheckCircle2 className="size-3 text-primary" />
+                每笔支付入池后可对账、可退款 —— Stripe for Agents 的账本层
+              </div>
+            </div>
             <SectionTitle>链上流水 · 本会话</SectionTitle>
             <div className="flex flex-col gap-1.5 rounded-xl border border-white/5 bg-card p-3 backdrop-blur">
               {ledger.length === 0 ? (
@@ -561,7 +582,7 @@ export function AgentPaymentsDemo() {
             </div>
             <div className="flex flex-col gap-1.5 rounded-xl border border-white/5 bg-card p-3 font-mono text-[10px] text-muted-foreground backdrop-blur">
               <div className="mb-0.5 text-[10px] uppercase tracking-wider text-muted-foreground/60">
-                Deployed contracts · Fuji
+                Deployed contracts · Base Sepolia
               </div>
               <Field label="token" value={shortenAddress(process.env.NEXT_PUBLIC_X402_TOKEN || "", 10)} mono />
               <Field

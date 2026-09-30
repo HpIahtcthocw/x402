@@ -18,7 +18,7 @@ import {
 
 /**
  * Demo protected resource: an "agent job" the agent pays for per task via
- * x402 (exact scheme, EIP-3009 on Fuji).
+ * x402 (exact scheme, EIP-3009 on Base Sepolia).
  *
  * Flow:
  *  1. Agent POSTs a task without PAYMENT-SIGNATURE → 402 + PAYMENT-REQUIRED.
@@ -33,6 +33,43 @@ interface TaskBody {
   task?: string;
   model?: string;
 }
+
+/** Per-task agent outputs — the visible "what you bought" evidence. */
+const TASK_OUTPUTS: Record<string, Record<string, unknown>> = {
+  "buy-order": {
+    order: {
+      item: "Pro 分析报告订阅（30 天）",
+      qty: 1,
+      unitPrice: "0.001 AGT",
+      total: "0.001 AGT",
+      status: "confirmed",
+      fulfillment: "AI 代购完成，凭证已入收款池",
+    },
+    summary: "AI 代购自动结算：订单已确认，付款进入服务商收款池（可审计、可对账）",
+    tokens: 96,
+    latencyMs: 410,
+  },
+  "generate-report": {
+    summary: "周报已生成：收入 +12%、流失 -3%、重点跟进华东客户",
+    tokens: 128,
+    latencyMs: 342,
+  },
+  "research-summary": {
+    summary: "研究摘要已生成：3 源综合，含 Base 生态支付赛道 5 项关键结论",
+    tokens: 144,
+    latencyMs: 386,
+  },
+  "code-review": {
+    summary: "代码审查完成：3 处潜在风险，2 处建议优化（详见 diff）",
+    tokens: 112,
+    latencyMs: 298,
+  },
+  "data-insight": {
+    summary: "数据洞察：MAU 环比 +8.4%，转化率 2.1%（-0.3pp），退货率回升需关注",
+    tokens: 118,
+    latencyMs: 322,
+  },
+};
 
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as TaskBody;
@@ -94,7 +131,7 @@ export async function POST(req: Request) {
     jobId: `job_${Date.now()}`,
     task,
     model: body.model || "agent-base",
-    output: {
+    output: TASK_OUTPUTS[task] ?? {
       summary: `Completed "${task}" for ${getAddress(result.payer ?? X402_PAYTO)}`,
       tokens: 128,
       latencyMs: 342,

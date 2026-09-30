@@ -13,6 +13,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { toViemChain } from "@avakit/core";
 
 const BASE = process.argv[2] || "http://localhost:3111";
+const TASK = process.env.SMOKE_TASK || "buy-order";
 const KEY = process.env.TEST_PRIVATE_KEY || "0x" + "11".repeat(32);
 
 const BASE_CHAIN = {
@@ -30,14 +31,14 @@ const b64encode = (o) => Buffer.from(JSON.stringify(o)).toString("base64");
 
 async function main() {
   console.log("=== x402 smoke test ===\n");
-  console.log(`Agent (payer): ${account.address}\n`);
+  console.log(`Agent (payer): ${account.address}  task=${TASK}\n`);
 
   // 1. Challenge.
   console.log("[1] POST /api/agent-task (no payment)");
   const res1 = await fetch(`${BASE}/api/agent-task`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ task: "generate-report" }),
+    body: JSON.stringify({ task: TASK }),
   });
   console.log(`    status=${res1.status}`);
   if (res1.status !== 402) throw new Error(`Expected 402, got ${res1.status}`);
@@ -113,7 +114,7 @@ async function main() {
   const res2 = await fetch(`${BASE}/api/agent-task`, {
     method: "POST",
     headers: { "content-type": "application/json", "payment-signature": signatureHeader },
-    body: JSON.stringify({ task: "generate-report" }),
+    body: JSON.stringify({ task: TASK }),
   });
   const body = await res2.json();
   const receipt = res2.headers.get("payment-response");
