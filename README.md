@@ -44,7 +44,7 @@ npm run smoke:x402   # 402 → 签名 → verify → 结算 全链路
 npm run compile:x402
 
 # 2. 部署 AgentToken + AgentPayments（需要 Fuji 测试 AVAX）
-DEPLOYER_PRIVATE_KEY=0x... npm run deploy:x402
+DEPLOYER_PRIVATE_KEY=<YOUR_PRIVATE_KEY> npm run deploy:x402
 
 # 3. 配置环境变量（.env.local）
 X402_TOKEN=<AgentToken 地址>
@@ -52,7 +52,7 @@ X402_PAYTO=<AgentPayments 地址>
 X402_DEMO=false            # 关闭 demo 模式，走真实链上结算
 
 # 4. 给测试钱包铸币（演示用）
-DEPLOYER_PRIVATE_KEY=0x... TOKEN=<AgentToken> TO=<钱包> AMOUNT=100 npm run mint:x402
+DEPLOYER_PRIVATE_KEY=<YOUR_PRIVATE_KEY> TOKEN=<AgentToken> TO=<钱包> AMOUNT=100 npm run mint:x402
 ```
 
 ## 环境变量（.env.local）
