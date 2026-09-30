@@ -275,6 +275,8 @@ export function AgentPaymentsDemo() {
               HTTP <span className="font-mono text-foreground">402</span> 即支付挑战 —— Agent 用{" "}
               <span className="font-mono text-primary">EIP-3009</span> 离线签名付款，链上结算自动完成。
               无需账号、无需 API key、无需订阅：把「付费能力」变成一行 HTTP 调用。
+              典型场景：数据分析 Agent 按次付费调用数据 API、IoT 设备为单次推理付费、
+              电商 Agent 为每次代下单自动结算——机器真正「自己赚钱、自己花钱」。
             </p>
           </div>
         </div>
@@ -342,11 +344,11 @@ export function AgentPaymentsDemo() {
               },
               {
                 title: "演示什么",
-                desc: "0.001 AGT 现场跑通「发起任务 → 402 挑战 → 签名 → 链上结算」完整闭环",
+                desc: "0.001 AGT 现场跑通「发起任务 → 402 挑战 → 签名 → 链上结算」完整闭环，多笔支付进入可审计收款池",
               },
               {
                 title: "链上可审计",
-                desc: "每笔支付上链（Avalanche Fuji），合约已部署、地址页可见，结算回执可查",
+                desc: "每笔支付上链（Avalanche Fuji），AgentPayments 收款池记录逐笔 paymentId → payer/amount/token，支持对账与退款",
               },
             ].map((c) => (
               <div key={c.title} className="flex flex-col gap-1.5 rounded-xl border border-white/8 bg-background/50 p-4 text-left">
