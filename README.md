@@ -37,6 +37,16 @@ npm run smoke:x402   # 402 → 签名 → verify → 结算 全链路
 
 浏览器打开后：连接钱包（burner 零门槛）→ 选任务 → ① 发起任务（触发 402）→ ② 签名授权并支付 → 看结算回执 + 任务结果。
 
+### 免费领取测试代币（Faucet）
+
+工作台左侧内置 **「领取 1 AGT」** 按钮——评审/访客用自己的钱包一键领取测试代币，即可真实支付跑通全链路。
+
+```bash
+# API：POST /api/faucet  { "address": "0x..." }
+# demo 模式：返回 mock 领取成功（无链上交易）
+# 真实模式（X402_DEMO=false + X402_DEPLOYER_PRIVATE_KEY）：链上 mint 1 AGT，返回 tx hash
+```
+
 ## 部署到 Fuji（Chain ID 43113 · 测试币到账后执行）
 
 ```bash
@@ -78,6 +88,7 @@ DEPLOYER_PRIVATE_KEY=<YOUR_PRIVATE_KEY> TOKEN=<AgentToken> TO=<钱包> AMOUNT=10
 │  server（挑战+验证）· client（签名+重试）· facilitator（结算）   │
 ├─ API 路由（Next.js App Router）─────────────────────────────┤
 │  /api/agent-task（受保护资源）· /api/x402/verify · /api/x402/settle │
+│  /api/faucet（免费领取 1 AGT 测试代币）                       │
 └─ 链上结算（Fuji）────────────────────────────────────────────┘
    AgentToken（EIP-3009 ERC-20） → AgentPayments（收款池+审计）
 ```
