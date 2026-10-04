@@ -16,13 +16,14 @@ const BASE = process.argv[2] || "http://localhost:3111";
 const TASK = process.env.SMOKE_TASK || "buy-order";
 const KEY = process.env.TEST_PRIVATE_KEY || "0x" + "11".repeat(32);
 
-const BASE_CHAIN = {
-  id: 84532,
-  name: "Base Sepolia",
-  rpcUrl: "https://sepolia.base.org",
-  nativeCurrency: { name: "Base", symbol: "ETH", decimals: 18 },
+const IS_TESTNET = process.env.MONAD_TESTNET === "1";
+const MONAD_CHAIN = {
+  id: IS_TESTNET ? 10143 : 143,
+  name: IS_TESTNET ? "Monad Testnet" : "Monad",
+  rpcUrl: IS_TESTNET ? "https://testnet-rpc.monad.xyz" : "https://rpc.monad.xyz",
+  nativeCurrency: { name: "Monad", symbol: "MON", decimals: 18 },
 };
-const chain = toViemChain(BASE_CHAIN);
+const chain = toViemChain(MONAD_CHAIN);
 const account = privateKeyToAccount(KEY);
 const walletClient = createWalletClient({ chain, transport: http(), account });
 

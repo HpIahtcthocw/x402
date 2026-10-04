@@ -1,4 +1,4 @@
-// Deploy the x402 settlement stack to Base Sepolia (Colosseum 分支):
+// Deploy the x402 settlement stack to Monad (Monad Metropolis 分支):
 //   1. AgentToken  — EIP-3009 ERC-20 (settlement asset)
 //   2. AgentPayments — pool that records + holds micropayments
 //
@@ -16,28 +16,30 @@ import { privateKeyToAccount } from "viem/accounts";
 import { toViemChain } from "@avakit/core";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const BASE_RPC = "https://sepolia.base.org";
-const BASE_CHAIN = {
-  id: 84532,
-  name: "Base Sepolia",
-  rpcUrl: BASE_RPC,
-  nativeCurrency: { name: "Base", symbol: "ETH", decimals: 18 },
+// MONAD_TESTNET=1 → Monad Testnet (chainId 10143); default = Monad Mainnet (143).
+const IS_TESTNET = process.env.MONAD_TESTNET === "1";
+const MONAD_RPC = IS_TESTNET ? "https://testnet-rpc.monad.xyz" : "https://rpc.monad.xyz";
+const MONAD_CHAIN = {
+  id: IS_TESTNET ? 10143 : 143,
+  name: IS_TESTNET ? "Monad Testnet" : "Monad",
+  rpcUrl: MONAD_RPC,
+  nativeCurrency: { name: "Monad", symbol: "MON", decimals: 18 },
 };
 
 const key = process.env.DEPLOYER_PRIVATE_KEY;
 if (!key || !/^0x[0-9a-fA-F]{64}$/.test(key)) {
   console.error(
     "\nDEPLOYER_PRIVATE_KEY is not set (or not a 0x-prefixed 32-byte hex key).\n\n" +
-      "Fund a throwaway wallet with Base Sepolia test ETH (faucet: https://faucets.chain.link/base-sepolia), then:\n\n" +
+      "Fund a throwaway wallet with MON (Monad faucet: https://faucet.monad.xyz), then:\n\n" +
       "  DEPLOYER_PRIVATE_KEY=0x... node scripts/deploy-x402.mjs\n",
   );
   process.exit(1);
 }
 
-const chain = toViemChain(BASE_CHAIN);
+const chain = toViemChain(MONAD_CHAIN);
 const account = privateKeyToAccount(key);
-const publicClient = createPublicClient({ chain, transport: http(BASE_RPC) });
-const walletClient = createWalletClient({ chain, transport: http(BASE_RPC), account });
+const publicClient = createPublicClient({ chain, transport: http(MONAD_RPC) });
+const walletClient = createWalletClient({ chain, transport: http(MONAD_RPC), account });
 
 const artifact = (name) => JSON.parse(
   readFileSync(join(root, "scripts", "artifacts", `${name}.json`), "utf8"),
@@ -64,7 +66,7 @@ async function main() {
   const token = await deploy("AgentToken", ["AgentToken", "AGT"]);
   const pool = await deploy("AgentPayments", []);
 
-  console.log("\n===== DEPLOYED (Base Sepolia) =====");
+  console.log(`\n===== DEPLOYED (${MONAD_CHAIN.name}) =====`);
   console.log(`AgentToken:    ${token}`);
   console.log(`AgentPayments: ${pool}`);
   console.log("\nNext steps:");

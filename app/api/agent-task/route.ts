@@ -18,7 +18,7 @@ import {
 
 /**
  * Demo protected resource: an "agent job" the agent pays for per task via
- * x402 (exact scheme, EIP-3009 on Base Sepolia).
+ * x402 (exact scheme, EIP-3009 on Monad).
  *
  * Flow:
  *  1. Agent POSTs a task without PAYMENT-SIGNATURE → 402 + PAYMENT-REQUIRED.
@@ -55,7 +55,7 @@ const TASK_OUTPUTS: Record<string, Record<string, unknown>> = {
     latencyMs: 342,
   },
   "research-summary": {
-    summary: "研究摘要已生成：3 源综合，含 Base 生态支付赛道 5 项关键结论",
+    summary: "研究摘要已生成：3 源综合，含 Monad 生态支付赛道 5 项关键结论",
     tokens: 144,
     latencyMs: 386,
   },

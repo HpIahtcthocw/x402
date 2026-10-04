@@ -17,12 +17,14 @@ import { privateKeyToAccount } from "viem/accounts";
 import { toViemChain } from "@avakit/core";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const BASE_RPC = "https://sepolia.base.org";
-const BASE_CHAIN = {
-  id: 84532,
-  name: "Base Sepolia",
-  rpcUrl: BASE_RPC,
-  nativeCurrency: { name: "Base", symbol: "ETH", decimals: 18 },
+// MONAD_TESTNET=1 → Monad Testnet (chainId 10143); default = Monad Mainnet (143).
+const IS_TESTNET = process.env.MONAD_TESTNET === "1";
+const MONAD_RPC = IS_TESTNET ? "https://testnet-rpc.monad.xyz" : "https://rpc.monad.xyz";
+const MONAD_CHAIN = {
+  id: IS_TESTNET ? 10143 : 143,
+  name: IS_TESTNET ? "Monad Testnet" : "Monad",
+  rpcUrl: MONAD_RPC,
+  nativeCurrency: { name: "Monad", symbol: "MON", decimals: 18 },
 };
 
 const key = process.env.DEPLOYER_PRIVATE_KEY;
@@ -35,10 +37,10 @@ if (!key || !/^0x[0-9a-fA-F]{64}$/.test(key) || !token || !to) {
   process.exit(1);
 }
 
-const chain = toViemChain(BASE_CHAIN);
+const chain = toViemChain(MONAD_CHAIN);
 const account = privateKeyToAccount(key);
-const publicClient = createPublicClient({ chain, transport: http(BASE_RPC) });
-const walletClient = createWalletClient({ chain, transport: http(BASE_RPC), account });
+const publicClient = createPublicClient({ chain, transport: http(MONAD_RPC) });
+const walletClient = createWalletClient({ chain, transport: http(MONAD_RPC), account });
 
 const abi = parseAbi(["function mint(address to, uint256 value)"]);
 

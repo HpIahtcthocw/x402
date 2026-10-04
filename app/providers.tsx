@@ -1,7 +1,7 @@
 "use client";
 
 import { type WalletAdapter, burnerAdapter, injectedAdapter, toViemChain } from "@avakit/core";
-import { baseSepolia } from "@/lib/chain";
+import { monadMainnet } from "@/lib/chain";
 import { web3authAdapter } from "@avakit/core/web3auth";
 import { AvaKitProvider } from "@avakit/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -23,14 +23,14 @@ export function Providers({ children }: { children: ReactNode }) {
     list.push(
       web3authAdapter({
         clientId: process.env.NEXT_PUBLIC_WEB3AUTH_CLIENT_ID || DEMO_WEB3AUTH_CLIENT_ID,
-        chains: [baseSepolia],
+        chains: [monadMainnet],
       }),
     );
     // Injected (Core / MetaMask) is always available.
     list.push(injectedAdapter());
     // Zero-config fallback: a temporary in-browser wallet so a new user can try
     // everything with no setup. The wallets above are the bring-your-own upgrade.
-    list.push(burnerAdapter({ chain: baseSepolia }));
+    list.push(burnerAdapter({ chain: monadMainnet }));
     return list;
   }, []);
 
@@ -43,10 +43,10 @@ export function Providers({ children }: { children: ReactNode }) {
   // (The shared eERC contract in lib/eerc-config.ts only exists on Fuji — deploy
   // your own instance to use another chain; see CLAUDE.md.)
   const [wagmiConfig] = useState(() => {
-    const viemChain = toViemChain(baseSepolia);
+    const viemChain = toViemChain(monadMainnet);
     return createConfig({
       chains: [viemChain],
-      transports: { [viemChain.id]: http("https://sepolia.base.org") },
+      transports: { [viemChain.id]: http("https://rpc.monad.xyz") },
     });
   });
   const [queryClient] = useState(() => new QueryClient());
@@ -55,7 +55,7 @@ export function Providers({ children }: { children: ReactNode }) {
     <ThemeProvider attribute="class" defaultTheme="dark" forcedTheme="dark" disableTransitionOnChange>
       <QueryClientProvider client={queryClient}>
         <WagmiProvider config={wagmiConfig}>
-          <AvaKitProvider chains={[baseSepolia]} adapters={adapters}>
+          <AvaKitProvider chains={[monadMainnet]} adapters={adapters}>
             {children}
           </AvaKitProvider>
         </WagmiProvider>

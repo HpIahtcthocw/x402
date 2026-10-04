@@ -24,6 +24,7 @@ export const SUPPORTED_NETWORKS: Record<
   "eip155:43114": { chainId: 43114, name: "Avalanche C-Chain", explorer: "https://snowtrace.io" },
   "eip155:84532": { chainId: 84532, name: "Base Sepolia", explorer: "https://sepolia.basescan.org" },
   "eip155:8453": { chainId: 8453, name: "Base", explorer: "https://basescan.org" },
+  "eip155:143": { chainId: 143, name: "Monad", explorer: "https://monadscan.com" },
 };
 
 /** Minimal ABI of AgentToken.transferWithAuthorization — the only on-chain

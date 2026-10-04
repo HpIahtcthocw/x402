@@ -38,7 +38,7 @@ import { decodeSettlementResponse, encodePaymentPayload } from "@/lib/x402/encod
  *
  * Runs a full x402 payment loop against the demo resource API:
  *  1. Agent posts a task → server answers 402 + PAYMENT-REQUIRED.
- *  2. Agent picks the "exact" requirement (Fuji, AgentToken, fixed amount).
+ *  2. Agent picks the "exact" requirement (Monad, AgentToken, fixed amount).
  *  3. Agent's wallet signs an EIP-3009 transferWithAuthorization (gasless).
  *  4. Agent retries with PAYMENT-SIGNATURE → server verifies + settles.
  *  5. Server returns the job result + PAYMENT-RESPONSE receipt.
@@ -182,7 +182,7 @@ export function AgentPaymentsDemo() {
     setJob(null);
     setSettlement(null);
     try {
-      const requirement = pickRequirement(challenge, { scheme: "exact", network: "eip155:84532" });
+      const requirement = pickRequirement(challenge, { scheme: "exact", network: "eip155:143" });
       const asset = requirement.asset as Address;
       const tokenName = (requirement.extra?.name as string) || "AgentToken";
 
@@ -262,7 +262,7 @@ export function AgentPaymentsDemo() {
               EIP-3009 gasless
             </span>
             <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 font-mono text-[10px] text-muted-foreground">
-              BASE · 84532
+              MONAD · 143
             </span>
             <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 font-mono text-[10px] text-muted-foreground">
               已部署 2 合约
@@ -349,7 +349,7 @@ export function AgentPaymentsDemo() {
               },
               {
                 title: "链上可审计",
-                desc: "每笔支付上链（Base Sepolia），AgentPayments 收款池记录逐笔 paymentId → payer/amount/token，支持对账与退款",
+                desc: "每笔支付上链（Monad），AgentPayments 收款池记录逐笔 paymentId → payer/amount/token，支持对账与退款",
               },
             ].map((c) => (
               <div key={c.title} className="flex flex-col gap-1.5 rounded-xl border border-white/8 bg-background/50 p-4 text-left">
@@ -373,7 +373,7 @@ export function AgentPaymentsDemo() {
             <div className="flex flex-col gap-1.5 rounded-xl border border-white/8 bg-card p-3 backdrop-blur">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-semibold text-foreground">AGT 测试代币</span>
-                <span className="font-mono text-[10px] text-muted-foreground">Base Sepolia faucet</span>
+                <span className="font-mono text-[10px] text-muted-foreground">Monad faucet</span>
               </div>
               <p className="text-[11px] leading-relaxed text-muted-foreground">
                 没余额？一键领取 1 AGT，即可真实支付跑通全链路。
@@ -393,12 +393,12 @@ export function AgentPaymentsDemo() {
                   <span>{faucetMsg.text}</span>
                   {faucetMsg.ok && faucetMsg.tx ? (
                     <a
-                      href={`https://sepolia.basescan.org/tx/${faucetMsg.tx}`}
+                      href={`https://monadscan.com/tx/${faucetMsg.tx}`}
                       target="_blank"
                       rel="noreferrer"
                       className="underline underline-offset-2"
                     >
-                      sepolia.basescan.org/tx/{faucetMsg.tx.slice(0, 10)}… ↗
+                      monadscan.com/tx/{faucetMsg.tx.slice(0, 10)}… ↗
                     </a>
                   ) : null}
                 </div>
@@ -449,7 +449,7 @@ export function AgentPaymentsDemo() {
                     <Lock className="size-4" /> HTTP 402 · PAYMENT REQUIRED
                   </span>
                   <span className="font-mono text-[10px] text-muted-foreground">
-                    x402 v2 · eip155:84532
+                    x402 v2 · eip155:143
                   </span>
                 </div>
                 {challenge.accepts.map((r) => (
@@ -582,7 +582,7 @@ export function AgentPaymentsDemo() {
             </div>
             <div className="flex flex-col gap-1.5 rounded-xl border border-white/5 bg-card p-3 font-mono text-[10px] text-muted-foreground backdrop-blur">
               <div className="mb-0.5 text-[10px] uppercase tracking-wider text-muted-foreground/60">
-                Deployed contracts · Base Sepolia
+                Deployed contracts · Monad
               </div>
               <Field label="token" value={shortenAddress(process.env.NEXT_PUBLIC_X402_TOKEN || "", 10)} mono />
               <Field
