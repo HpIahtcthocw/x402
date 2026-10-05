@@ -1,28 +1,37 @@
-# avalanche-agent · AI Agent × x402 链上支付底座
+# x402 Agent Gateway · AI Agent 链上微支付底座
 
-> Avalanche Buildathon 参赛项目 · 方向四「身份 · 信任 · AI 基础设施」
-> 一套代码同时覆盖 Avalanche Buildathon / BNB Hack Online / X-Agent MCP / Binance Agentic AI 四场比赛
+> **Monad Metropolis Hackathon 参赛项目** · Consumer Products and Payments 赛道 · 截止 2026-10-13
+> 同一底座多赛复用：Monad（本投）/ Colosseum（Base 版）/ Avalanche（已投）
 
-**产品一句话**：让 AI Agent 完成任务后，通过 x402 开放支付标准自动发起链上微支付——无需账号、无需 API key、无需订阅，签名 gasless（EIP-3009），结算服务端广播，链上全程可审计。
+**产品一句话**：让 AI Agent 完成任务后，通过 x402 开放支付标准自动发起链上微支付——无需账号、无需 API key、无需订阅；Agent 签名 gasless（EIP-3009），结算服务端广播，链上全程可审计。
 
-**差异化卖点（对标同赛道获奖项目）**：不止是「又一个 x402 网关」——本底座把 Agent 支付的**收款端**做成可审计收款池（`AgentPayments`：逐笔 paymentId → payer/amount/token，支持对账/退款），并完整落地 **EIP-3009 委托授权**（Agent 用无 gas 的钱包离线签名、gas 由服务商付）。这相当于把「机器自主花钱」从协议层一直打通到服务商账本层。
+**差异化卖点（对标同赛道获奖项目）**：不止是「又一个 x402 网关」——本产品把 Agent 支付的**收款端**做成可审计收款池（`AgentPayments`：逐笔 paymentId → payer/amount/token，支持对账/退款），并完整落地 **EIP-3009 委托授权**（Agent 用无 gas 的钱包离线签名、gas 由服务商付）。这相当于把「机器自主花钱」从协议层一直打通到服务商账本层。
 
-## 场景楔子：机器自主花钱
+---
 
-x402 的价值要挂在具体场景上才成立，本底座已为以下场景开箱即用：
+## 官方标准背书（为什么这不是玩具 demo）
 
-| 场景 | 怎么用本底座 |
+- **100% x402 V2 协议实现**（官方三 header：`PAYMENT-REQUIRED` / `PAYMENT-SIGNATURE` / `PAYMENT-RESPONSE`），exact 方案 + EIP-712 域分隔 + nonce 防重放——对齐 [x402 官方规范](https://docs.x402.org)
+- **收款池 = 官方 `batch-settlement` scheme 的落地**：x402 官方三大支付方案之一（批量结算、离线 voucher、链上批量入账），我们的 `AgentPayments` 就是它的账本实现
+- **paymentId = 官方 `Payment Identifier` extension**：官方标准明确支持"为支付附加唯一 ID 用于追踪、对账、幂等"——本产品开箱即用
+- **兼容 Google A2A x402 消息流**（payment-required → payment-submitted → payment-completed）：可对接 [google-agentic-commerce/a2a-x402](https://github.com/google-agentic-commerce/a2a-x402)，agent 之间互相卖服务的标准协议
+
+## 场景楔子：AI 代购自动结算（主推）
+
+**AI Agent 替用户下单 → 完成即自动向商家收款池结算 → 商家批量对账**——这是「Stripe for Agents」的第一场景：
+
+| 场景 | 怎么用本产品 |
 |---|---|
+| **AI 代购自动结算** | Agent 完成一次代购即自动向服务商收款池结算，商家端批量对账/退款 |
 | **数据分析 Agent 按次付费** | Agent 调数据 API，每次调用触发 402 → 签名 → 结算，替代 API key/订阅 |
 | **IoT 设备按次推理付费** | 设备钱包离线签名，为单次模型推理付几厘钱，无需设备持 gas |
-| **电商 Agent 代下单结算** | Agent 完成一次代购即自动向服务商收款池结算，商家端批量对账 |
 | **AI 信用/声誉服务** | 把支付与身份/信任层组合，形成 agent 之间的商业闭环 |
 
-## 为什么是 Avalanche
+## 为什么是 Monad
 
-- **x402 官方多链支持**，Fuji 有完整开发者工具链（AvaKit / Builder Hub / eERC），Demo 闭环分钟级可跑通
-- **EIP-3009 gasless 授权**天然适配「Agent 无 gas 钱包」——这是 x402 exact 方案在 EVM 的标准做法，Avalanche 作为首发落地链
-- **eERC 隐私代币**作为可选结算资产，为「Agent 付款隐私」预留延伸（模板面板已从首页移除，聚焦 x402 主线）
+- **Monad 官方背书 x402**：Monad 生态亲自办过 **Blitz SF = x402 Edition** 黑客松，Consumer Products and Payments 赛道认这个方向
+- **EIP-3009 gasless 授权**天然适配「Agent 无 gas 钱包」——这是 x402 exact 方案在 EVM 的标准做法
+- **Monad 高性能 EVM**：亚秒级出块 + 低 gas，正好承载 Agent 经济的高频微支付
 
 ## 核心链路（演示闭环）
 
@@ -36,15 +45,15 @@ Agent 钱包签名 EIP-3009 transferWithAuthorization（gasless，链下）
 Agent 带 PAYMENT-SIGNATURE 重试 ──▶ 服务端 verify → 链上结算 → 返回结果 + PAYMENT-RESPONSE
 ```
 
-- **前端**：Next.js 16 + AvaKit（钱包连接/社交登录/burner 零门槛试用）
+- **前端**：Next.js 16 + 钱包连接（burner 零门槛试用）
 - **支付层**：x402 V2 协议完整实现（`lib/x402/`）——types / Base64 编解码 / server / client / facilitator
-- **链上层**：`AgentToken`（EIP-3009 ERC-20）+ `AgentPayments`（结算收款池，可查询审计轨迹）
-- **Facilitator**：`POST /api/x402/verify`（链下验证）+ `POST /api/x402/settle`（链上广播结算）
+- **链上层**：`AgentToken`（EIP-3009 ERC-20）+ `AgentPayments`（结算收款池，可查询审计轨迹、可退款）
+- **Facilitator**：`POST /api/x402/verify`（链下验签）+ `POST /api/x402/settle`（链上广播结算）
 
 ## 快速开始
 
 ```bash
-# 1. 安装依赖（已装好；若重装需先删 pnpm-workspace.yaml）
+# 1. 安装依赖
 npm install --legacy-peer-deps
 
 # 2. 本地运行（demo 模式无需测试币、无需部署）
@@ -66,39 +75,50 @@ npm run smoke:x402   # 402 → 签名 → verify → 结算 全链路
 # 真实模式（X402_DEMO=false + X402_DEPLOYER_PRIVATE_KEY）：链上 mint 1 AGT，返回 tx hash
 ```
 
-## 部署到 Fuji（Chain ID 43113 · 测试币到账后执行）
+## 部署到 Monad（测试网 Chain ID 10143 / 主网 Chain ID 143）
 
 ```bash
 # 1. 编译合约（已产出 scripts/artifacts/*.json）
 npm run compile:x402
 
-# 2. 部署 AgentToken + AgentPayments（需要 Fuji 测试 AVAX）
+# 2. 测试网部署（需要测试网 MON 作为 gas）
+MONAD_TESTNET=1 DEPLOYER_PRIVATE_KEY=<YOUR_PRIVATE_KEY> npm run deploy:x402
+
+# 3. 主网部署（需要真实 MON）
 DEPLOYER_PRIVATE_KEY=<YOUR_PRIVATE_KEY> npm run deploy:x402
 
-# 3. 配置环境变量（.env.local）
+# 4. 配置环境变量（.env.local）
 X402_TOKEN=<AgentToken 地址>
 X402_PAYTO=<AgentPayments 地址>
 X402_DEMO=false            # 关闭 demo 模式，走真实链上结算
 
-# 4. 给测试钱包铸币（演示用）
+# 5. 给测试钱包铸币（演示用）
 DEPLOYER_PRIVATE_KEY=<YOUR_PRIVATE_KEY> TOKEN=<AgentToken> TO=<钱包> AMOUNT=100 npm run mint:x402
 ```
+
+**网络参数**：
+
+| 项 | 测试网 | 主网 |
+|---|---|---|
+| Chain ID | 10143 | 143 |
+| RPC | `https://testnet-rpc.monad.xyz` | `https://rpc.monad.xyz` |
+| Explorer | MonadScan | [monadscan.com](https://monadscan.com) |
 
 ## 环境变量（.env.local）
 
 | 变量 | 说明 |
 |---|---|
-| `NEXT_PUBLIC_WEB3AUTH_CLIENT_ID` | Web3Auth 社交登录（localhost 可用内置 demo key） |
 | `X402_TOKEN` | 结算代币地址（AgentToken） |
 | `X402_PAYTO` | 收款池地址（AgentPayments） |
 | `X402_AMOUNT` | 每任务价格（原子单位，默认 0.001 AGT） |
 | `X402_DEMO` | demo 模式（默认 true，无需链上交易即可演示） |
 | `X402_DEPLOYER_PRIVATE_KEY` | Facilitator 钱包私钥（付 gas 广播结算） |
+| `MONAD_TESTNET` | 脚本开关：置 1 走测试网（10143），否则主网（143） |
 
 ## 架构
 
 ```
-┌─ 前端 AvaKit（钱包/社交登录/burner）─────────────────────────┐
+┌─ 前端 Next.js 16（钱包连接/burner）────────────────────────┐
 │  ① 发起任务 → 收到 402 挑战                                     │
 │  ② 钱包签名 EIP-3009（gasless）                                │
 │  ③ 带 PAYMENT-SIGNATURE 重试 → 结果 + PAYMENT-RESPONSE        │
@@ -108,33 +128,37 @@ DEPLOYER_PRIVATE_KEY=<YOUR_PRIVATE_KEY> TOKEN=<AgentToken> TO=<钱包> AMOUNT=10
 ├─ API 路由（Next.js App Router）─────────────────────────────┤
 │  /api/agent-task（受保护资源）· /api/x402/verify · /api/x402/settle │
 │  /api/faucet（免费领取 1 AGT 测试代币）                       │
-└─ 链上结算（Fuji）────────────────────────────────────────────┘
+└─ 链上结算（Monad）──────────────────────────────────────────┘
    AgentToken（EIP-3009 ERC-20） → AgentPayments（收款池+审计）
 ```
 
+## 竞品定位
+
+本产品**不是** facilitator 平台（区别于 Corbits 这类 x402 商户仪表盘/开发者平台），而是**场景产品**：面向"AI 代购/数据 API/IoT 按次付费"的具体生意，把收款池账本（对账/退款/批量结算）做成开箱即用的能力。
+
 ## 参考与借鉴
 
-- **x402**：Coinbase 开放支付标准（HTTP 402 复活）— `specs/x402-specification-v2.md`，EIP-3009 exact 方案
-- **AvaKit**：`npm create avalanche-app`（本项目骨架），钱包适配器 + 链数据 API
-- **Avalanche eERC**：`@avalabs/eerc-sdk`（隐私代币，本底座的可选隐私结算层；模板自带面板已从首页移除，聚焦 x402 主线）
-- **Ava Labs**：HyperSDK Starter Kit / Avalanche Starter Kit / Builder Hub faucet
+- **x402 官方**：https://docs.x402.org（规范 + batch-settlement scheme + Payment Identifier extension + `@x402/*` SDK）
+- **Coinbase x402**：`github.com/coinbase/x402`（官方参考实现，Apache 2.0）
+- **Google A2A x402**：`github.com/google-agentic-commerce/a2a-x402`（A2A × x402 扩展，MIT）
+- **Superfluid x402-sf**：`github.com/superfluid-org/x402-sf`（EF 官方点名：标准协议 + value-added 叠加范式，MIT）
+- **Corbits**：`corbits.dev`（同赛道竞品，用于差异化定位）
 
-## 四赛复用
+## 多赛复用
 
 | 比赛 | 状态 | 复用点 |
 |---|---|---|
-| Avalanche Buildathon（截止 10/1） | 主打 | 完整项目，部署 Fuji |
-| BNB Hack Online（长期，双周评审） | 待投 | 换 BSC 网络参数 + 原生 BNB 结算 |
-| X-Agent AI MCP Hackathon 2026 | 待投 | 把 402 流程封装为 MCP 支付工具 |
-| Binance Agentic AI Challenge | 待投 | 同一底座 + Binance 链部署 |
+| Monad Metropolis（10/13 截止） | **本投** | Consumer Products and Payments 赛道，部署 Monad |
+| Colosseum Crypto World's Fair（10/12 截止） | 同底座 Base 版 | Base Sepolia 部署 + 同套场景 |
+| Avalanche Buildathon（已投） | 已提交 | Fuji 已部署，评审 10/1-10/8 |
+| BNB Hack Online（长期） | 待投 | 换 BSC 网络参数 + 原生 BNB 结算 |
 
 ## 目录结构
 
 ```
 app/            Next.js App Router（页面 + API 路由）
-components/     Agent 支付演示面板 / eERC 面板
+components/     Agent 支付演示面板
 contracts/      AgentToken.sol（EIP-3009）+ AgentPayments.sol（收款池）
-lib/eerc-config.ts  eERC 电路配置（原模板）
 lib/x402/       x402 协议实现（types/encode/server/client/facilitator/config）
 scripts/        compile/deploy/mint/smoke 脚本 + artifacts
 ```
