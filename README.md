@@ -14,7 +14,7 @@
 - **100% x402 V2 协议实现**（官方三 header：`PAYMENT-REQUIRED` / `PAYMENT-SIGNATURE` / `PAYMENT-RESPONSE`），exact 方案 + EIP-712 域分隔 + nonce 防重放——对齐 [x402 官方规范](https://docs.x402.org)
 - **收款池 = 官方 `batch-settlement` scheme 的落地**：x402 官方三大支付方案之一（批量结算、离线 voucher、链上批量入账），我们的 `AgentPayments` 就是它的账本实现
 - **paymentId = 官方 `Payment Identifier` extension**：官方标准明确支持"为支付附加唯一 ID 用于追踪、对账、幂等"——本产品开箱即用
-- **兼容 Google A2A x402 消息流**（payment-required → payment-submitted → payment-completed）：可对接 [google-agentic-commerce/a2a-x402](https://github.com/google-agentic-commerce/a2a-x402)，agent 之间互相卖服务的标准协议
+- **兼容 Google A2A x402 消息流**（payment-required → payment-submitted → payment-completed）：已实现 [A2A-x402 v0.2](https://github.com/google-agentic-commerce/a2a-x402/blob/main/spec/v0.2) Standalone Flow 三端点——`GET /api/a2a/agent-card`（AgentCard 声明 x402 extension）、`POST /api/a2a/task`（创建任务返回 `payment-required`）、`POST /api/a2a/message`（提交 `payment-submitted` → 验证结算 → 返回 `payment-completed` + receipts），agent 之间互相卖服务的标准协议开箱即用
 
 ## 场景楔子：AI 代购自动结算（主推）
 
@@ -128,6 +128,7 @@ DEPLOYER_PRIVATE_KEY=<YOUR_PRIVATE_KEY> TOKEN=<AgentToken> TO=<钱包> AMOUNT=10
 ├─ API 路由（Next.js App Router）─────────────────────────────┤
 │  /api/agent-task（受保护资源）· /api/x402/verify · /api/x402/settle │
 │  /api/faucet（免费领取 1 AGT 测试代币）                       │
+│  /api/a2a/*（A2A x402 v0.2：agent-card / task / message）     │
 └─ 链上结算（Monad）──────────────────────────────────────────┘
    AgentToken（EIP-3009 ERC-20） → AgentPayments（收款池+审计）
 ```
