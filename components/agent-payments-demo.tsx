@@ -22,8 +22,17 @@ import {
   Wallet,
   XCircle,
 } from "lucide-react";
-import { useMemo, useState } from "react";
-import { createWalletClient, custom, type Address } from "viem";
+import { useMemo, useState, useEffect } from "react";
+import { createWalletClient, custom, http, type Chain, type Address } from "viem";
+import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
+
+/** Monad Mainnet (chain id 143) — minimal chain object for the burner client. */
+const MONAD_MAINNET: Chain = {
+  id: 143,
+  name: "Monad",
+  nativeCurrency: { name: "Monad", symbol: "MON", decimals: 18 },
+  rpcUrls: { default: { http: ["https://rpc.monad.xyz"] } },
+};
 import {
   buildPaymentPayload,
   parsePaymentRequired,
@@ -98,28 +107,72 @@ export function AgentPaymentsDemo() {
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
   const [faucetBusy, setFaucetBusy] = useState(false);
   const [faucetMsg, setFaucetMsg] = useState<{ ok: boolean; text: string; tx?: string } | null>(null);
+  /** Burner demo — ephemeral in-memory EOA, no wallet extension needed. */
+  const [burner, setBurner] = useState<null | { address: Address; account: ReturnType<typeof privateKeyToAccount> }>(null);
+  const [autoRunning, setAutoRunning] = useState(false);
+
+  /** Start the burner demo: generate an ephemeral account, skip the login gate. */
+  function startBurner() {
+    if (burner) return;
+    const account = privateKeyToAccount(generatePrivateKey());
+    setBurner({ address: account.address, account });
+  }
+
+  const effectiveAddress: Address | null = burner?.address ?? (isConnected ? address : null);
 
   const walletClient = useMemo(() => {
+    if (burner) {
+      return createWalletClient({
+        chain: MONAD_MAINNET,
+        transport: http(),
+        account: burner.account,
+      });
+    }
     if (!address || !provider) return null;
     return createWalletClient({
       chain: toViemChain(chain),
       transport: custom(provider),
       account: address,
     });
-  }, [address, provider, chain]);
+  }, [address, provider, chain, burner]);
 
   const now = () => new Date().toLocaleTimeString("en-GB", { hour12: false });
 
+  /** ?demo=burner → start burner immediately, then run the loop once unattended. */
+  useEffect(() => {
+    if (burner || autoRunning) return;
+    const isBurner =
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("demo") === "burner";
+    if (!isBurner) return;
+    setAutoRunning(true);
+    const t = setTimeout(() => {
+      startBurner();
+      setTimeout(() => void requestTask(), 700);
+    }, 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** Auto-play continuation: once the 402 challenge lands in state (and the
+   *  burner walletClient exists), sign + retry without any click. */
+  useEffect(() => {
+    if (!burner || !autoRunning || !challenge || !walletClient) return;
+    const t = setTimeout(() => void payAndRetry(), 900);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [challenge, walletClient, burner, autoRunning]);
+
   /** Faucet — mint 1 AGT test token to the connected wallet (one click). */
   async function claimAGT() {
-    if (!address) return;
+    if (!effectiveAddress) return;
     setFaucetBusy(true);
     setFaucetMsg(null);
     try {
       const res = await fetch("/api/faucet", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ address }),
+        body: JSON.stringify({ address: effectiveAddress }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.ok) {
@@ -162,6 +215,7 @@ export function AgentPaymentsDemo() {
           { time: now(), task, amount: "0.001 AGT", status: "CHALLENGED" },
           ...l,
         ]);
+
       } else {
         const data = await res.json().catch(() => null);
         setError(`Expected 402 challenge, got ${res.status}`);
@@ -175,14 +229,15 @@ export function AgentPaymentsDemo() {
   }
 
   /** Step 2 — sign the EIP-3009 authorization and retry with the header. */
-  async function payAndRetry() {
-    if (!challenge || !walletClient || !address) return;
+  async function payAndRetry(challengeOverride?: PaymentRequired) {
+    const currentChallenge = challengeOverride ?? challenge;
+    if (!currentChallenge || !walletClient || !effectiveAddress) return;
     setBusy(true);
     setError(null);
     setJob(null);
     setSettlement(null);
     try {
-      const requirement = pickRequirement(challenge, { scheme: "exact", network: "eip155:143" });
+      const requirement = pickRequirement(currentChallenge, { scheme: "exact", network: "eip155:143" });
       const asset = requirement.asset as Address;
       const tokenName = (requirement.extra?.name as string) || "AgentToken";
 
@@ -193,7 +248,7 @@ export function AgentPaymentsDemo() {
         tokenAddress: asset,
         tokenName,
         auth: {
-          from: address,
+          from: effectiveAddress,
           to: requirement.payTo as Address,
           value: requirement.amount,
           validAfter: String(nowSec - 60),
@@ -201,7 +256,7 @@ export function AgentPaymentsDemo() {
         },
       });
 
-      const payload = buildPaymentPayload({ required: challenge, accepted: requirement, auth, signature });
+      const payload = buildPaymentPayload({ required: currentChallenge, accepted: requirement, auth, signature });
       const header = encodePaymentPayload(payload);
       setSignatureHeader(header);
 
@@ -309,23 +364,26 @@ export function AgentPaymentsDemo() {
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/5 bg-card px-4 py-3 backdrop-blur">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Wallet className="size-3.5" />
-          {isConnected && address ? (
+          {effectiveAddress ? (
             <span>
-              wallet <span className="font-mono text-foreground">{shortenAddress(address, 8)}</span>
+              {burner ? (
+                <span className="rounded border border-primary/30 bg-primary/10 px-1 text-[10px] text-primary">BURNER</span>
+              ) : null}{" "}
+              wallet <span className="font-mono text-foreground">{shortenAddress(effectiveAddress, 8)}</span>
               <span className="mx-2 text-white/15">·</span>
-              chain <span className="font-mono text-foreground">{chain.name}</span>
+              chain <span className="font-mono text-foreground">{burner ? "Monad" : chain.name}</span>
               <span className="mx-2 text-white/15">·</span>
               price <span className="font-mono text-primary">0.001 AGT / task</span>
             </span>
           ) : (
-            <span>未连接钱包 —— 连接后解锁演示工作台（burner 零门槛）</span>
+            <span>未连接钱包 —— 连接后解锁演示工作台（或用 Burner 零门槛体验）</span>
           )}
         </div>
         <ConnectAvalanche />
       </div>
 
       {/* ── Login gate (not connected) ── */}
-      {!isConnected || !address || !provider ? (
+      {!effectiveAddress ? (
         <div className="flex flex-col gap-6 rounded-2xl border border-white/8 bg-card/40 px-6 py-12 backdrop-blur sm:px-10">
           <div className="flex flex-col items-center gap-2 text-center">
             <h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
@@ -333,7 +391,7 @@ export function AgentPaymentsDemo() {
             </h2>
             <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
               这里没有传统账号密码——<span className="text-foreground">连接钱包就是登录</span>。
-              三种方式任选其一，30 秒进入演示。
+              装了 OneKey / MetaMask？点右侧连接。<span className="text-foreground">没装钱包？</span>点下面的 Burner 演示，30 秒跑完闭环。
             </p>
           </div>
 
@@ -359,10 +417,16 @@ export function AgentPaymentsDemo() {
             ))}
           </div>
 
-          <div className="flex flex-col items-center gap-2">
-            <ConnectAvalanche />
+          <div className="flex flex-col items-center gap-3">
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <Button onClick={startBurner} className="w-full sm:w-auto">
+                <CircleDot className="size-4" />
+                🚀 免钱包 Burner 演示（一键体验完整闭环）
+              </Button>
+              <ConnectAvalanche />
+            </div>
             <p className="text-center font-mono text-[10px] text-muted-foreground">
-              0.001 AGT / task · gasless EIP-3009 · 无需 API key / 订阅
+              0.001 AGT / task · gasless EIP-3009 · 无需 API key / 订阅 · Burner 为浏览器内存临时账户
             </p>
           </div>
         </div>
@@ -468,7 +532,7 @@ export function AgentPaymentsDemo() {
                       <Field label="payTo" value={shortenAddress(r.payTo, 10)} mono full={r.payTo} />
                       <Field label="timeout" value={`${r.maxTimeoutSeconds}s`} mono />
                     </div>
-                    <Button disabled={busy} onClick={payAndRetry} className="w-full">
+                    <Button disabled={busy} onClick={() => void payAndRetry()} className="w-full">
                       {busy && step?.startsWith("agent wallet") ? (
                         <Loader2 className="animate-spin" />
                       ) : (
