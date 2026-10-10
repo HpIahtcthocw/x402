@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createPublicClient, createWalletClient, http } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 import { baseSepolia } from "@/lib/chain";
 import { toViemChain } from "@avakit/core";
 import { settleExact } from "@/lib/x402/facilitator";
@@ -67,7 +68,7 @@ export async function POST(req: Request) {
   const walletClient = createWalletClient({
     chain,
     transport: http(),
-    account: privateKey,
+    account: privateKeyToAccount(privateKey),
   });
 
   const result = await settleExact(
