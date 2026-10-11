@@ -90,6 +90,8 @@ type LedgerEntry = {
   amount: string;
   status: "CHALLENGED" | "SETTLED" | "FAILED";
   tx?: string;
+  recordTx?: string;
+  paymentId?: string;
 };
 
 export function AgentPaymentsDemo() {
@@ -278,7 +280,7 @@ export function AgentPaymentsDemo() {
         setJob(body as Record<string, unknown>);
         setStep("api → agent: 200 + job result + PAYMENT-RESPONSE");
         setLedger((l) => [
-          { time: now(), task, amount: "0.001 AGT", status: "SETTLED", tx: settlement?.transaction },
+          { time: now(), task, amount: "0.001 AGT", status: "SETTLED", tx: settlement?.transaction, recordTx: settlement?.extensions?.paymentRecordTx as string | undefined, paymentId: settlement?.extensions?.paymentId as string | undefined },
           ...l,
         ]);
       } else {
@@ -620,7 +622,28 @@ export function AgentPaymentsDemo() {
                 每笔支付入池后可对账、可退款 —— Stripe for Agents 的账本层
               </div>
             </div>
-            <SectionTitle>链上流水 · 本会话</SectionTitle>
+            <SectionTitle>链上流水 · 本会话
+              {ledger.length > 0 && (
+                <button
+                  onClick={() => {
+                    const header = "time,task,amount,status,payment_id,settle_tx,record_tx\n";
+                    const rows = ledger.map((e) =>
+                      [e.time, e.task, e.amount, e.status, e.paymentId || "", e.tx || "", e.recordTx || ""].join(","),
+                    );
+                    const blob = new Blob([header + rows.join("\n")], { type: "text/csv" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = "x402-ledger.csv";
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                  className="ml-2 rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground hover:bg-white/10"
+                >
+                  export CSV
+                </button>
+              )}
+            </SectionTitle>
             <div className="flex flex-col gap-1.5 rounded-xl border border-white/5 bg-card p-3 backdrop-blur">
               {ledger.length === 0 ? (
                 <p className="py-6 text-center font-mono text-[11px] text-muted-foreground">
