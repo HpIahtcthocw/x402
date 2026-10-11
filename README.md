@@ -1,8 +1,10 @@
-# x402 Agent Gateway · Stripe for AI Agents
+# The Receipt Layer for x402 — on Base
 
-> **Your AI buys something and pays for it on its own — no account, no API key, no gas, every transaction auditable on-chain.**
+> **Meter any API for agents on Base — every payment settled on-chain, auditable and refundable.**
 
-A minimal, working **x402 v2 payment gateway for AI Agents**, deployed live on **Base Sepolia**. Agents pay per HTTP request with a gasless EIP-3009 signature; the facilitator broadcasts settlement on-chain. No signup, no API keys, no subscriptions.
+**1.** One line to meter any API. **2.** Base, gasless EIP-3009. **3.** Every payment a refundable on-chain receipt.
+
+*No account. No API key. No gas. The agent pays itself.*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
@@ -12,96 +14,72 @@ A minimal, working **x402 v2 payment gateway for AI Agents**, deployed live on *
 - **Network**: Base Sepolia (`eip155:84532`)
 - **Explorer**: https://sepolia.basescan.org
 
-Press **"Start burner demo"** — a fresh burner wallet is generated in your browser, funded with test tokens, signs one EIP-3009 authorization, and a real on-chain settlement transaction appears in seconds.
+## Why
 
-## What just happened (30-second mental model)
+AI agents are starting to transact autonomously — calling paid APIs thousands of times a day. x402 (the Linux Foundation standard, backed by Visa / Stripe / AWS) solved *how* an agent pays with a gasless EIP-3009 signature. But nobody solved *reconciliation*: when an agent spends across thousands of micro-payments, there is no receipt, no per-payment record, and no refund trail.
 
-```
-Agent calls POST /api/agent-task
-        │
-        ▼
-402 Payment Required  ──►  amount, payTo, asset, network
-        │
-        ▼
-Agent signs EIP-3009 transferWithAuthorization  (offline, gasless)
-        │
-        ▼
-POST /api/x402/settle  ──►  facilitator broadcasts on-chain
-        │
-        ▼
-200 OK  +  PAYMENT-RESPONSE  +  real tx hash
-```
+We are the **receipt layer**: every settlement is booked into an on-chain contract with a stable `paymentId` (payer / amount / token / timestamp), enabling batch reconciliation, owner-authorized refunds, and nonce-based replay protection.
 
 ## Contracts (Base Sepolia, real bytecode)
 
 | Contract | Address | Purpose |
 |---|---|---|
-| `AgentToken` | [`0xdabd72e3e7fb2811115970e0c59279aaa0196cdb`](https://sepolia.basescan.org/address/0xdabd72e3e7fb2811115970e0c59279aaa0196cdb) | EIP-3009-enabled ERC-20 (`transferWithAuthorization`) |
-| `AgentPayments` | [`0x3d22a8ec8e8e47c8914b2ed70d18283a45cee948`](https://sepolia.basescan.org/address/0x3d22a8ec8e8e47c8914b2ed70d18283a45cee948) | Auditable payment pool: records payer / amount / token per settlement |
+| `AgentToken` | [`0xdabd72e3e7fb2811115970e0c59279aaa0196cdb`](https://sepolia.basescan.org/address/0xdabd72e3e7fb2811115970e0c59279aaa0196cdb) | EIP-3009 ERC-20 (`transferWithAuthorization`) |
+| `AgentPayments` | [`0x3d22a8ec8e8e47c8914b2ed70d18283a45cee948`](https://sepolia.basescan.org/address/0x3d22a8ec8e8e47c8914b2ed70d18283a45cee948) | On-chain settlement ledger: `PaymentRecorded`, `refund()`, `settlements[paymentId]` |
 
-## Verified on-chain settlement
+## How it works
 
-Run the end-to-end script locally and you will see a **real transaction hash** appear on basescan:
+```
+agent ──POST /api/agent-task──▶ 402 Payment Required
+                                     │
+agent ──signs EIP-3009 offline──────▶ (gasless, no wallet extension)
+                                     │
+agent ──POST /api/x402/settle──────▶ facilitator broadcasts:
+                                     │   1) transferWithAuthorization (token moves)
+                                     │   2) recordERC20 (books the receipt)
+                                     ▼
+                          200 OK + tx hash + paymentId
+```
+
+**Read `PaymentRecorded` off Base with none of our code in the loop — it matches the dashboard row for row.**
+
+## Run the agent yourself (one command)
 
 ```bash
-# 1. fresh burner EOA
-# 2. POST /api/faucet      → mint AGT on Base Sepolia (real tx)
-# 3. POST /api/agent-task  → 402 challenge
-# 4. sign EIP-3009         → offline, gasless
-# 5. POST /api/x402/settle → facilitator broadcasts transferWithAuthorization
+# Fresh burner → faucet mint → 402 → sign → settle → record on-chain
 node scripts/burner-e2e-v2.mjs
 ```
 
-Sample settlement tx (from our own smoke run):
-[`0x5d0b9513ce17cd6b1a7c5c0044249e635b78ab4fc9f9e27f77604fe30ac6b000`](https://sepolia.basescan.org/tx/0x5d0b9513ce17cd6b1a7c5c0044249e635b78ab4fc9f9e27f77604fe30ac6b000)
+Or drive it from any MCP client (Cursor / Claude Desktop) — see [`scripts/mcp-server.mjs`](scripts/mcp-server.mjs).
 
 ## Architecture
 
 ```
-lib/x402/
-  types.ts        # x402 v2 protocol types (PaymentRequired / PaymentPayload / SettlementResponse)
-  encode.ts       # Base64 header encoding (payment-required / payment-signature / payment-response)
-  server.ts       # server-side challenge builder
-  client.ts       # client-side payment signer
-  facilitator.ts  # verify + broadcast EIP-3009 transferWithAuthorization
+lib/x402/          # x402 v2 protocol (types, codec, server challenge, client signer, facilitator)
 app/api/
-  agent-task/     # protected resource (returns 402 unless paid)
-  faucet/         # test-token dispenser (demo only, real on-chain mint)
-  x402/verify/    # facilitator: signature verification
-  x402/settle/    # facilitator: on-chain settlement broadcast
+  agent-task/      # protected resource (returns 402 unless paid)
+  x402/settle/     # facilitator: verify + broadcast transferWithAuthorization + recordERC20
+  faucet/          # test-token dispenser (real on-chain mint)
 contracts/
-  AgentToken.sol      # ERC-20 + EIP-3009 (transferWithAuthorization / receiveWithAuthorization)
-  AgentPayments.sol   # auditable payment pool
+  AgentToken.sol   # ERC-20 + EIP-3009
+  AgentPayments.sol # on-chain ledger: recordERC20 / refund / withdraw
+scripts/
+  burner-e2e-v2.mjs  # end-to-end smoke (one command, real tx hashes)
+  mcp-server.mjs     # MCP tool: pay_and_call
 ```
 
-## Why this matters
+## We implement a standard we don't own
 
-The x402 standard (Linux Foundation, Visa / Stripe / AWS among 40 members) wants AI agents to pay each other over HTTP the same way browsers pay over HTTP today. This repo is a reference implementation that:
-
-- **Works without a wallet extension** — burner EOA generated client-side, gas paid by the facilitator.
-- **Is gasless for the agent** — EIP-3009 means the agent only signs once, never holds gas.
-- **Is auditable** — every settlement lands on a payment pool contract with a verifiable tx hash.
-- **Is chain-agnostic** — swap `lib/x402/config.ts` to point at any EVM chain with an EIP-3009 token.
+We implement the official x402 v2 spec — we extend a standard we don't own. Earlier work proved the category on other chains (Corbits on Solana, Glassbox402 on Hedera). We bring the receipt-and-refund layer to **Base**, the largest x402 settlement venue — and we make the receipt a **contract primitive** (`AgentPayments.refund()`), not a dashboard view.
 
 ## Quickstart
 
 ```bash
 cp .env.example .env.local
-# fill in:
-#   X402_TOKEN / X402_PAYTO / X402_TOKEN_NAME / X402_AMOUNT
-#   X402_DEPLOYER_PRIVATE_KEY (facilitator, pays gas)
-#   X402_DEMO=false
-
+# X402_TOKEN / X402_PAYTO / X402_TOKEN_NAME / X402_AMOUNT / X402_DEPLOYER_PRIVATE_KEY / X402_DEMO=false
 npm install
 npm run dev
-# open http://localhost:3000?demo=burner
-```
-
-## Deploy contracts yourself
-
-```bash
-node scripts/deploy-x402.mjs
-# prints AgentToken / AgentPayments addresses + deployment tx hashes
+# open http://localhost:3000
 ```
 
 ## License
