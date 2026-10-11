@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   Button,
@@ -26,7 +26,7 @@ import { useMemo, useState, useEffect } from "react";
 import { createWalletClient, custom, http, type Chain, type Address } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 
-/** Monad Mainnet (chain id 143) — minimal chain object for the burner client. */
+/** Base Sepolia (chain id 84532) — minimal chain object for the burner client. */
 const BASE_SEPOLIA: Chain = {
   id: 84532,
   name: "Base Sepolia",
@@ -47,7 +47,7 @@ import { decodeSettlementResponse, encodePaymentPayload } from "@/lib/x402/encod
  *
  * Runs a full x402 payment loop against the demo resource API:
  *  1. Agent posts a task → server answers 402 + PAYMENT-REQUIRED.
- *  2. Agent picks the "exact" requirement (Monad, AgentToken, fixed amount).
+ *  2. Agent picks the "exact" requirement (Base Sepolia, AgentToken, fixed amount).
  *  3. Agent's wallet signs an EIP-3009 transferWithAuthorization (gasless).
  *  4. Agent retries with PAYMENT-SIGNATURE → server verifies + settles.
  *  5. Server returns the job result + PAYMENT-RESPONSE receipt.
@@ -407,7 +407,7 @@ export function AgentPaymentsDemo() {
               },
               {
                 title: "链上可审计",
-                desc: "每笔支付上链（Monad），AgentPayments 收款池记录逐笔 paymentId → payer/amount/token，支持对账与退款",
+                desc: "每笔支付上链（Base Sepolia），AgentPayments 收款池记录逐笔 paymentId → payer/amount/token，支持对账与退款",
               },
             ].map((c) => (
               <div key={c.title} className="flex flex-col gap-1.5 rounded-xl border border-white/8 bg-background/50 p-4 text-left">
@@ -437,7 +437,7 @@ export function AgentPaymentsDemo() {
             <div className="flex flex-col gap-1.5 rounded-xl border border-white/8 bg-card p-3 backdrop-blur">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-semibold text-foreground">AGT 测试代币</span>
-                <span className="font-mono text-[10px] text-muted-foreground">Monad faucet</span>
+                <span className="font-mono text-[10px] text-muted-foreground">Base faucet</span>
               </div>
               <p className="text-[11px] leading-relaxed text-muted-foreground">
                 没余额？一键领取 1 AGT，即可真实支付跑通全链路。
@@ -457,12 +457,12 @@ export function AgentPaymentsDemo() {
                   <span>{faucetMsg.text}</span>
                   {faucetMsg.ok && faucetMsg.tx ? (
                     <a
-                      href={`https://monadscan.com/tx/${faucetMsg.tx}`}
+                      href={`https://sepolia.basescan.org/tx/${faucetMsg.tx}`}
                       target="_blank"
                       rel="noreferrer"
                       className="underline underline-offset-2"
                     >
-                      monadscan.com/tx/{faucetMsg.tx.slice(0, 10)}… ↗
+                      basescan.org/tx/{faucetMsg.tx.slice(0, 10)}… ↗
                     </a>
                   ) : null}
                 </div>
@@ -646,7 +646,7 @@ export function AgentPaymentsDemo() {
             </div>
             <div className="flex flex-col gap-1.5 rounded-xl border border-white/5 bg-card p-3 font-mono text-[10px] text-muted-foreground backdrop-blur">
               <div className="mb-0.5 text-[10px] uppercase tracking-wider text-muted-foreground/60">
-                Deployed contracts · Monad
+                Deployed contracts · Base Sepolia
               </div>
               <Field label="token" value={shortenAddress(process.env.NEXT_PUBLIC_X402_TOKEN || "", 10)} mono />
               <Field
