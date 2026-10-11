@@ -1,11 +1,11 @@
-/**
+﻿/**
  * x402 protocol core types (V2), matching the Coinbase x402 specification
  * (specs/x402-specification-v2.md). Transport-agnostic: these exact shapes are
  * what get Base64-encoded into the PAYMENT-REQUIRED / PAYMENT-SIGNATURE /
  * PAYMENT-RESPONSE HTTP headers.
  */
 
-/** CAIP-2 chain identifier, e.g. "eip155:43113" (Avalanche Fuji). */
+/** CAIP-2 chain identifier, e.g. "eip155:84532". */
 export type Caip2ChainId = string;
 
 /** ResourceInfo — describes the protected resource the agent is paying for. */
@@ -19,7 +19,7 @@ export interface ResourceInfo {
 export interface PaymentRequirements {
   /** Payment scheme identifier, e.g. "exact". */
   scheme: string;
-  /** Blockchain network in CAIP-2 format, e.g. "eip155:43113". */
+  /** Blockchain network in CAIP-2 format, e.g. "eip155:84532". */
   network: Caip2ChainId;
   /** Required payment amount in atomic token units. */
   amount: string;

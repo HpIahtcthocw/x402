@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 /**
  * x402 Agent Gateway — MCP server
  *
@@ -140,8 +140,8 @@ async function handlePayAndCall(args) {
 
   // 3. settle via gateway facilitator
   const settle = await httpJson("POST", `${GATEWAY_URL}/api/x402/settle`, {
-    payload,
-    requirements: req,
+    paymentPayload: payload,
+    paymentRequirements: req,
   });
 
   // 4. retry original request with payment header

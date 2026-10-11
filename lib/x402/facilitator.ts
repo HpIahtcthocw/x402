@@ -1,4 +1,4 @@
-import {
+﻿import {
   type Address,
   type Hex,
   type PublicClient,
@@ -20,8 +20,6 @@ export const SUPPORTED_NETWORKS: Record<
   Caip2ChainId,
   { chainId: number; name: string; explorer: string }
 > = {
-  "eip155:43113": { chainId: 43113, name: "Avalanche Fuji", explorer: "https://testnet.snowtrace.io" },
-  "eip155:43114": { chainId: 43114, name: "Avalanche C-Chain", explorer: "https://snowtrace.io" },
   "eip155:84532": { chainId: 84532, name: "Base Sepolia", explorer: "https://sepolia.basescan.org" },
   "eip155:8453": { chainId: 8453, name: "Base", explorer: "https://basescan.org" },
 };

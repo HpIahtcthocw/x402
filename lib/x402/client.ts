@@ -1,4 +1,4 @@
-import {
+﻿import {
   type Address,
   type Hex,
   type WalletClient,
@@ -84,7 +84,7 @@ export async function signTransferWithAuthorization(params: {
   const account = walletClient.account;
   if (!account) throw new Error("Wallet client has no account — connect a wallet first");
   const chain = walletClient.chain;
-  if (!chain) throw new Error("Wallet client has no chain — set Fuji before paying");
+  if (!chain) throw new Error("Wallet client has no chain — set chain before paying");
 
   const signature = await walletClient.signTypedData({
     account,

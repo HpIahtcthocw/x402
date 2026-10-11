@@ -2,7 +2,7 @@
 
 import {
   Button,
-  ConnectAvalanche,
+  ConnectAvalanche as ConnectWallet,
   humanizeError,
   shortenAddress,
   useAvaKit,
@@ -381,7 +381,7 @@ export function AgentPaymentsDemo() {
             <span>未连接钱包 —— 连接后解锁演示工作台（或用 Burner 零门槛体验）</span>
           )}
         </div>
-        <ConnectAvalanche />
+        <ConnectWallet />
       </div>
 
       {/* ── Login gate (not connected) ── */}
@@ -425,7 +425,7 @@ export function AgentPaymentsDemo() {
                 <CircleDot className="size-4" />
                 🚀 免钱包 Burner 演示（一键体验完整闭环）
               </Button>
-              <ConnectAvalanche />
+              <ConnectWallet />
             </div>
             <p className="text-center font-mono text-[10px] text-muted-foreground">
               0.001 AGT / task · gasless EIP-3009 · 无需 API key / 订阅 · Burner 为浏览器内存临时账户

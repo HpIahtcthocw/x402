@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+﻿// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
 /**
@@ -8,7 +8,7 @@ pragma solidity ^0.8.20;
  *
  *         A resource server that monetizes an API with x402 collects into
  *         this pool. Two settlement assets are supported:
- *           - native AVAX (asset address 0x0) — agents pay by value transfer
+ *           - native ETH (asset address 0x0) — agents pay by value transfer
  *           - an EIP-3009 ERC-20 (e.g. AgentToken) — agents sign a gasless
  *             transferWithAuthorization; the facilitator broadcasts it
  *
@@ -30,7 +30,7 @@ contract AgentPayments {
     struct Settlement {
         bytes32 paymentId;
         address payer;      // agent wallet that paid
-        address token;      // address(0) = native AVAX
+        address token;      // address(0) = native ETH
         uint256 amount;     // atomic units of `token`
         uint64 timestamp;   // when the payment was recorded
         bool refunded;
@@ -76,7 +76,7 @@ contract AgentPayments {
     // ------------------------------------------------------------------ record
 
     /**
-     * @notice Record a native-AVAX micropayment. The paying agent sends
+     * @notice Record a native-ETH micropayment. The paying agent sends
      *         `msg.value` alongside this call; `paymentId` must be fresh.
      */
     function recordNative(bytes32 paymentId, address payer) external payable {
@@ -132,7 +132,7 @@ contract AgentPayments {
     /**
      * @notice Refund a recorded payment back to the original payer.
      *         Owner-only: refunds are a business decision of the resource
-     *         operator. Native refunds are sent as AVAX; ERC-20 refunds call
+     *         operator. Native refunds are sent as ETH; ERC-20 refunds call
      *         token.transfer.
      */
     function refund(bytes32 paymentId) external onlyOwner {
@@ -157,7 +157,7 @@ contract AgentPayments {
     // ------------------------------------------------------------------ withdraw
 
     /**
-     * @notice Withdraw collected value (native AVAX when token == 0x0, else
+     * @notice Withdraw collected value (native ETH when token == 0x0, else
      *         ERC-20) to a destination address.
      */
     function withdraw(address token, address to, uint256 amount) external onlyOwner {

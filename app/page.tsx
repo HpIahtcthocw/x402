@@ -1,10 +1,10 @@
-"use client";
+﻿"use client";
 
 import { AgentPaymentsDemo } from "@/components/agent-payments-demo";
 
 /**
  * Home: the x402 AI-agent micropayment base — a single-product page.
- * (The template's eERC panel was removed: it was an un-branded scaffold
+ * (The template's 
  * that diluted the product story and confused first-time visitors.)
  */
 export default function Home() {
