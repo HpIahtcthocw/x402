@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { type WalletAdapter, burnerAdapter, injectedAdapter, toViemChain } from "@avakit/core";
 import { baseSepolia } from "@/lib/chain";
@@ -34,14 +34,8 @@ export function Providers({ children }: { children: ReactNode }) {
     return list;
   }, []);
 
-  // The eERC SDK's read hooks (balance/state) are built on wagmi + react-query
-  // internally, so this template runs a wagmi config alongside AvaKitProvider
-  // purely to satisfy those reads. Wallet connect/sign still goes through
-  // AvaKitProvider's adapters (Web3Auth / injected) — wagmi never owns the
-  // account here, it only provides an RPC-backed read client. Derive the wagmi
-  // chain from the same Base chain AvaKit uses, so the two never diverge.
-  // (The shared eERC contract in lib/eerc-config.ts only exists on Fuji — deploy
-  // your own instance to use another chain; see CLAUDE.md.)
+  // wagmi provides an RPC read client for Base Sepolia. Wallet connect/sign
+  // goes through AvaKitProvider's adapters (Web3Auth / injected / burner).
   const [wagmiConfig] = useState(() => {
     const viemChain = toViemChain(baseSepolia);
     return createConfig({

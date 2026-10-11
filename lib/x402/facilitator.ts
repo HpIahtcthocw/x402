@@ -34,6 +34,12 @@ const AGENT_TOKEN_ABI = parseAbi([
   "function name() view returns (string)",
 ]);
 
+/** Minimal ABI of AgentPayments.recordERC20 — books a settled payment into
+ * the on-chain audit ledger after the token transfer confirms. */
+const AGENT_PAYMENTS_ABI = parseAbi([
+  "function recordERC20(bytes32 paymentId,address payer,address token,uint256 amount)",
+]);
+
 export interface FacilitatorOptions {
   publicClient: PublicClient;
   walletClient: WalletClient;
@@ -111,12 +117,31 @@ export async function settleExact(
         account,
       },
     );
+
+    // Wait for the token transfer to confirm before booking the ledger entry,
+    // so a reorg can't leave a PaymentRecorded with no actual token movement.
+    await opts.publicClient.waitForTransactionReceipt({ hash: txHash });
+
+    // Book the payment into the AgentPayments on-chain audit ledger.
+    // paymentId = EIP-3009 nonce (bytes32, globally unique per authorization).
+    const pool = getContract({
+      address: req.payTo as Address,
+      abi: AGENT_PAYMENTS_ABI,
+      client: { public: opts.publicClient, wallet: opts.walletClient },
+    });
+    const recordTxHash = await pool.write.recordERC20(
+      [auth.nonce as Hex, auth.from as Address, tokenAddress, BigInt(auth.value)],
+      { chain: opts.walletClient.chain, account },
+    );
+    await opts.publicClient.waitForTransactionReceipt({ hash: recordTxHash });
+
     return {
       success: true,
       transaction: txHash,
       network,
       payer: auth.from,
       amount: auth.value,
+      extensions: { paymentRecordTx: recordTxHash, paymentId: auth.nonce },
     };
   } catch (e) {
     return {
