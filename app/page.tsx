@@ -2,11 +2,6 @@
 
 import { AgentPaymentsDemo } from "@/components/agent-payments-demo";
 
-/**
- * Home: the x402 AI-agent micropayment base — a single-product page.
- * (The template's 
- * that diluted the product story and confused first-time visitors.)
- */
 export default function Home() {
   return (
     <div className="min-h-dvh">
@@ -17,10 +12,10 @@ export default function Home() {
             <span className="font-mono text-sm font-semibold tracking-tight">
               x402 Agent Gateway
             </span>
-            <span className="hidden rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary sm:inline-block">
+            <span className="hidden rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary sm:inline-block">
               ● LIVE
             </span>
-            <span className="hidden rounded-full border border-white/10 bg-white/5 px-2 py-0.5 font-mono text-[10px] text-muted-foreground md:inline-block">
+            <span className="hidden rounded-full border border-white/10 bg-white/5 px-2 py-0.5 font-mono text-[11px] text-muted-foreground md:inline-block">
               BASE · 84532
             </span>
           </div>
