@@ -14,7 +14,7 @@
  *         "command": "node",
  *         "args": ["scripts/mcp-server.mjs"],
  *         "env": {
- *           "GATEWAY_URL": "https://avalanche-agent-mu.vercel.app",
+ *           "GATEWAY_URL": "https://x402-agent-gateway.vercel.app",
  *           "BURNER_PRIVATE_KEY": "0x..."   // optional; generated if missing
  *         }
  *       }

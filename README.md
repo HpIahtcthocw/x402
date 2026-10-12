@@ -1,4 +1,4 @@
-# The Receipt Layer for x402 — on Base
+﻿# The Receipt Layer for x402 — on Base
 
 > **Meter any API for agents on Base — every payment settled on-chain, auditable and refundable.**
 
@@ -10,7 +10,7 @@
 
 ## Live demo
 
-- **Web**: https://avalanche-agent-mu.vercel.app
+- **Web**: https://x402-agent-gateway.vercel.app
 - **Network**: Base Sepolia (`eip155:84532`)
 - **Explorer**: https://sepolia.basescan.org
 

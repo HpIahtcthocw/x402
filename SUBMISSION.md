@@ -4,11 +4,11 @@
 
 ## Problem Statement
 
-AI agents are starting to transact autonomously — calling paid APIs thousands of times a day. x402 (the Linux Foundation standard, backed by Visa / Stripe / AWS) solved *how* an agent pays with a gasless EIP-3009 signature. But nobody solved *reconciliation*: when an agent spends across thousands of micro-payments, there is no receipt, no per-payment record, and no refund trail. Finance teams cannot audit what an autonomous agent actually bought.
+AI agents are starting to transact autonomously — calling paid APIs thousands of times a day. x402 (the Linux Foundation standard, backed by Visa / Stripe / AWS) solved *how* an agent pays with a gasless EIP-3009 signature. But the receiving side is still unsolved: providers get raw transfers — no per-payment record, no receipt, and no refund trail. Finance teams cannot audit what an autonomous agent actually bought.
 
 ## Technical Approach
 
-We implement the official x402 v2 protocol (exact scheme, EIP-3009 `transferWithAuthorization`) end-to-end on Base Sepolia: 402 challenge → client signs an authorization → facilitator verifies off-chain and settles on-chain. On the receiving side we add `AgentPayments`, a settlement ledger: every payment is booked under a stable `paymentId` (payer / amount / token / timestamp) via `PaymentRecorded`, enabling progressive reconciliation, owner-authorized refunds, and nonce-based replay protection. A headless agent client — drivable as an MCP tool — runs the full loop autonomously: no LLM, no browser extension, no gas.
+We implement the official x402 v2 protocol (exact scheme, EIP-3009 `transferWithAuthorization`) end-to-end on Base Sepolia: 402 challenge → client signs an authorization → facilitator verifies off-chain and settles on-chain. On the receiving side we add `AgentPayments`, a settlement ledger: every payment is booked under a stable `paymentId` (payer / amount / token / timestamp), with an on-chain refund path via `PaymentRecorded`, enabling progressive reconciliation, owner-authorized refunds, and nonce-based replay protection. A headless agent client — drivable as an MCP tool — runs the full loop autonomously: no LLM, no browser extension, no gas.
 
 ## Target Audience
 
@@ -32,7 +32,10 @@ As agent-to-agent commerce grows, the entity that owns the *receipt layer* owns 
 
 - AgentToken: `0xdabd72e3e7fb2811115970e0c59279aaa0196cdb`
 - AgentPayments: `0x3d22a8ec8e8e47c8914b2ed70d18283a45cee948`
-- Sample settle tx (transferWithAuthorization): `0x5300c0f777e52b3bacb979223b6aa7c7d94dbbab6b36c1f2f807f0644228145b`
-- Sample record tx (PaymentRecorded event): `0xb2e54660bc244dc875a3e3b3183ab742b549535f2d981d770aaeb580e10f962c`
+- settle #1 (transferWithAuthorization): `0x5300c0f777e52b3bacb979223b6aa7c7d94dbbab6b36c1f2f807f0644228145b`
+- settle #2 (transferWithAuthorization): `0x4d46b4d52ab21b758891f2b84d3faf00b66c53b2b0a2ba59e8d151a6134fee40`
+- record #1 (PaymentRecorded): `0xb2e54660bc244dc875a3e3b3183ab742b549535f2d981d770aaeb580e10f962c`
+- record #2 (PaymentRecorded): `0xe8c3be26c60a2c21f287a79dbf960344cd0c49f5fb1d2e17d7c7051bc2c02edd`
+- refund #1 (PaymentRefunded): `0x41bbab6f2cf4377336e2d94b02c92fe4a57377ff83969b6115b976e1aec9fd7c`
 - GitHub: https://github.com/HpIahtcthocw/x402/tree/colosseum
-- Live demo: https://avalanche-agent-mu.vercel.app
+- Live demo: https://x402-agent-gateway.vercel.app
