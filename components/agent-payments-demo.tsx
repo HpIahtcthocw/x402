@@ -101,6 +101,50 @@ export function AgentPaymentsDemo() {
   /** Burner demo — ephemeral in-memory EOA, no wallet extension needed. */
   const [burner, setBurner] = useState<null | { address: Address; account: ReturnType<typeof privateKeyToAccount> }>(null);
   const [autoRunning, setAutoRunning] = useState(false);
+  /** On-chain ledger read from PaymentRecorded events (not just this session). */
+  const [chainLedger, setChainLedger] = useState<Array<{
+    paymentId: string;
+    payer: string;
+    amount: string;
+    timestamp: number;
+    refunded: boolean;
+    tx: string;
+  }>>([]);
+  const [refundingId, setRefundingId] = useState<string | null>(null);
+
+  async function fetchChainLedger() {
+    try {
+      const res = await fetch("/api/ledger", { cache: "no-store" });
+      const data = await res.json();
+      if (data?.ok) setChainLedger(data.entries || []);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  useEffect(() => {
+    fetchChainLedger();
+    const t = setInterval(fetchChainLedger, 15000);
+    return () => clearInterval(t);
+  }, []);
+
+  async function refundPayment(paymentId: string) {
+    setRefundingId(paymentId);
+    try {
+      const res = await fetch("/api/refund", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ paymentId }),
+      });
+      const data = await res.json();
+      if (!data?.ok) setError(data?.error || "refund failed");
+      await fetchChainLedger();
+    } catch (e) {
+      setError(humanizeError(e));
+    } finally {
+      setRefundingId(null);
+    }
+  }
 
   /** Start the burner demo: generate an ephemeral account, skip the login gate. */
   function startBurner() {
@@ -533,13 +577,17 @@ export function AgentPaymentsDemo() {
 
           {/* ── Right: payee pool + on-chain ledger ── */}
           <aside className="flex flex-col gap-3">
-            <SectionTitle>Payee Pool</SectionTitle>
+            <SectionTitle>Payee Pool · on-chain</SectionTitle>
             <div className="flex flex-col gap-2 rounded-xl border border-primary/25 bg-primary/5 p-3 backdrop-blur">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Settled this session</span>
+                <span className="text-muted-foreground">Booked on-chain</span>
                 <span className="font-mono font-semibold text-primary">
-                  {ledger.filter((e) => e.status === "SETTLED").length} tx ·{" "}
-                  {ledger.filter((e) => e.status === "SETTLED").length * 0.001} AGT
+                  {chainLedger.length} tx ·{" "}
+                  {(
+                    chainLedger.reduce((s, e) => s + BigInt(e.amount), 0n) /
+                    10n ** 18n
+                  ).toString()}{" "}
+                  AGT
                 </span>
               </div>
               <Field
@@ -577,23 +625,41 @@ export function AgentPaymentsDemo() {
               )}
             </SectionTitle>
             <div className="flex flex-col gap-1.5 rounded-xl border border-white/5 bg-card p-3 backdrop-blur">
-              {ledger.length === 0 ? (
+              {chainLedger.length === 0 ? (
                 <p className="py-6 text-center font-mono text-xs text-muted-foreground">
-                  no payments yet
+                  loading on-chain payments…
                 </p>
               ) : (
-                ledger.map((e, i) => (
+                chainLedger.map((e, i) => (
                   <div
                     key={i}
                     className="flex items-center justify-between gap-2 rounded-md border border-white/5 bg-background/40 px-2.5 py-2 text-xs"
                   >
                     <div className="flex min-w-0 flex-col">
-                      <span className="truncate font-mono text-foreground/90">{e.task}</span>
-                      <span className="text-[11px] text-muted-foreground">{e.time}</span>
+                      <span className="truncate font-mono text-foreground/90">
+                        {shortenAddress(e.payer, 8)}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">
+                        {new Date(e.timestamp * 1000).toLocaleString()}
+                      </span>
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-0.5">
-                      <span className="font-mono text-primary">{e.amount}</span>
-                      <LedgerBadge status={e.status} />
+                      <span className="font-mono text-primary">
+                        {(BigInt(e.amount) / 10n ** 18n).toString()} AGT
+                      </span>
+                      {e.refunded ? (
+                        <span className="rounded-full border border-red-400/30 bg-red-400/10 px-1.5 py-0.5 font-mono text-[11px] text-red-300">
+                          REFUNDED
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => void refundPayment(e.paymentId)}
+                          disabled={refundingId === e.paymentId}
+                          className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground hover:bg-white/10 disabled:opacity-50"
+                        >
+                          {refundingId === e.paymentId ? "refunding…" : "refund"}
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))
