@@ -5,17 +5,17 @@ import type { Address } from "viem";
  *
  * These values are read from the environment when present (deployed setup),
  * falling back to the demo values below. After running
- * `scripts/deploy-x402.mjs`, set:
+ * `scripts/deploy-x402.mjs` (with MONAD_TESTNET=1), set:
  *   X402_TOKEN=0x...   X402_PAYTO=0x...   X402_TOKEN_NAME=AgentToken
  */
 
 export const X402_NETWORK = {
-  /** CAIP-2 identifier — Monad Mainnet (Monad Metropolis 分支). */
-  caip2: "eip155:143" as const,
-  chainId: 143,
-  name: "Monad",
-  rpc: "https://rpc.monad.xyz",
-  explorer: "https://monadscan.com",
+  /** CAIP-2 identifier — Monad Testnet (Monad Metropolis). */
+  caip2: "eip155:10143" as const,
+  chainId: 10143,
+  name: "Monad Testnet",
+  rpc: process.env.X402_RPC_URL || "https://10143.rpc.thirdweb.com",
+  explorer: "https://testnet.monadexplorer.com",
 };
 
 /** Settlement token contract (AgentToken, EIP-3009). */
@@ -34,8 +34,17 @@ export const X402_TOKEN_DECIMALS = 18;
 export const X402_PAYTO: Address =
   (process.env.X402_PAYTO || "0x000000000000000000000000000000000000dEaD") as Address;
 
+/** Block the AgentPayments pool was deployed at — the ledger scan starts here
+ *  so `eth_getLogs` never has to walk the whole chain. */
+export const X402_DEPLOY_BLOCK = process.env.X402_DEPLOY_BLOCK || "70618924";
+
 /** Fixed price per agent task, in atomic units (default 0.001 AGT). */
 export const X402_AMOUNT = process.env.X402_AMOUNT || "1000000000000000";
 
 /** Whether /api/agent-task serves the resource in demo mode (no on-chain tx). */
 export const X402_DEMO = process.env.X402_DEMO !== "false";
+
+/** Public URL this gateway is served from — used in copy-paste snippets
+ *  (MCP config, curl). Override with NEXT_PUBLIC_APP_URL when the deployment
+ *  domain changes; the live UI additionally prefers `window.location.origin`. */
+export const APP_BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://x402-agent-gateway.vercel.app";

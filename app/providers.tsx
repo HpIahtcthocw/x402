@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { type WalletAdapter, burnerAdapter, injectedAdapter, toViemChain } from "@avakit/core";
-import { monadMainnet } from "@/lib/chain";
+import { monadTestnet } from "@/lib/chain";
 import { web3authAdapter } from "@avakit/core/web3auth";
 import { AvaKitProvider } from "@avakit/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -23,24 +23,24 @@ export function Providers({ children }: { children: ReactNode }) {
     list.push(
       web3authAdapter({
         clientId: process.env.NEXT_PUBLIC_WEB3AUTH_CLIENT_ID || DEMO_WEB3AUTH_CLIENT_ID,
-        chains: [monadMainnet],
+        chains: [monadTestnet],
       }),
     );
     // Injected (Core / MetaMask) is always available.
     list.push(injectedAdapter());
     // Zero-config fallback: a temporary in-browser wallet so a new user can try
     // everything with no setup. The wallets above are the bring-your-own upgrade.
-    list.push(burnerAdapter({ chain: monadMainnet }));
+    list.push(burnerAdapter({ chain: monadTestnet }));
     return list;
   }, []);
 
-  // wagmi provides an RPC read client for Base Sepolia. Wallet connect/sign
+  // wagmi provides the RPC read client for Monad Testnet. Wallet connect/sign
   // goes through AvaKitProvider's adapters (Web3Auth / injected / burner).
   const [wagmiConfig] = useState(() => {
-    const viemChain = toViemChain(monadMainnet);
+    const viemChain = toViemChain(monadTestnet);
     return createConfig({
       chains: [viemChain],
-      transports: { [viemChain.id]: http("https://rpc.monad.xyz") },
+      transports: { [viemChain.id]: http("https://10143.rpc.thirdweb.com") },
     });
   });
   const [queryClient] = useState(() => new QueryClient());
@@ -49,7 +49,7 @@ export function Providers({ children }: { children: ReactNode }) {
     <ThemeProvider attribute="class" defaultTheme="dark" forcedTheme="dark" disableTransitionOnChange>
       <QueryClientProvider client={queryClient}>
         <WagmiProvider config={wagmiConfig}>
-          <AvaKitProvider chains={[monadMainnet]} adapters={adapters}>
+          <AvaKitProvider chains={[monadTestnet]} adapters={adapters}>
             {children}
           </AvaKitProvider>
         </WagmiProvider>
