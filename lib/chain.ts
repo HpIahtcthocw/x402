@@ -1,10 +1,8 @@
-import { defineChain } from "@avakit/core";
+﻿import { defineChain } from "@avakit/core";
 
 /**
- * Monad Mainnet (chainId 143) — Monad Metropolis 黑客松版本的主网配置。
- * Avalanche Fuji 版在 master 分支（评限期冻结）；Base 版在 colosseum 分支。
- * 测试网为 chainId 10143（https://testnet-rpc.monad.xyz），部署脚本用
- * MONAD_TESTNET=1 切换。
+ * Monad (chainId 143) — Monad Metropolis hackathon.
+ * Base Sepolia version lives on colosseum branch; Avalanche Fuji on master.
  */
 export const monadMainnet = defineChain({
   id: 143,

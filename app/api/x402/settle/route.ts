@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createPublicClient, createWalletClient, http } from "viem";
-import { monadMainnet } from "@/lib/chain";
+import { privateKeyToAccount } from "viem/accounts";
+import { baseSepolia } from "@/lib/chain";
 import { toViemChain } from "@avakit/core";
 import { settleExact } from "@/lib/x402/facilitator";
 import { X402_NETWORK, X402_TOKEN_ADDRESS, X402_TOKEN_NAME } from "@/lib/x402/config";
@@ -15,7 +16,7 @@ import type { PaymentPayload, PaymentRequirements } from "@/lib/x402/types";
  *
  * Requires env config:
  *   X402_DEPLOYER_PRIVATE_KEY — facilitator wallet that pays gas
- *   X402_TOKEN               — AgentToken address on Monad
+ *   X402_TOKEN               — AgentToken address on Base Sepolia
  *   X402_TOKEN_NAME          — token name for the EIP-712 domain (default AgentToken)
  *
  * Returns the PAYMENT-RESPONSE-compatible SettlementResponse.
@@ -62,12 +63,12 @@ export async function POST(req: Request) {
     );
   }
 
-  const chain = toViemChain(monadMainnet);
+  const chain = toViemChain(baseSepolia);
   const publicClient = createPublicClient({ chain, transport: http() });
   const walletClient = createWalletClient({
     chain,
     transport: http(),
-    account: privateKey,
+    account: privateKeyToAccount(privateKey),
   });
 
   const result = await settleExact(

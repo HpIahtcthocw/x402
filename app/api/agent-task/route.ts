@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
 import { getAddress } from "viem";
+import { createPublicClient, createWalletClient, http } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { baseSepolia } from "@/lib/chain";
+import { toViemChain } from "@avakit/core";
+import { settleExact } from "@/lib/x402/facilitator";
+import { X402_TOKEN_NAME } from "@/lib/x402/config";
 import {
   createPaymentRequired,
   parsePaymentSignature,
@@ -80,16 +86,30 @@ export async function POST(req: Request) {
   // In demo mode, serve immediately with a synthetic receipt. In production
   // the facilitator settles first (POST /api/x402/settle) and you check
   // result.success before serving.
-  const receiptTx =
+  let receiptTx =
     (process.env.X402_DEMO_TX as string) || `0x${"0".repeat(64)}`;
 
-  const settlement = buildSettlementResponse({
+  let settlement = buildSettlementResponse({
     success: true,
     transaction: receiptTx,
     network: X402_NETWORK.caip2,
     payer: result.payer ? (result.payer as `0x${string}`) : undefined,
     amount: expected.amount,
   });
+
+  // Only release the resource after both transfer and receipt booking confirm.
+  if (!X402_DEMO) {
+    const key = process.env.X402_DEPLOYER_PRIVATE_KEY as `0x${string}` | undefined;
+    if (!key) return NextResponse.json({ reason: "Facilitator not configured" }, { status: 503 });
+    const transport = http(process.env.X402_RPC_URL || "https://sepolia.base.org");
+    const chain = toViemChain(baseSepolia);
+    settlement = await settleExact({
+      publicClient: createPublicClient({ chain, transport }),
+      walletClient: createWalletClient({ chain, transport, account: privateKeyToAccount(key) }),
+    }, { paymentPayload: payload, paymentRequirements: expected, tokenAddress: X402_TOKEN_ADDRESS, tokenName: X402_TOKEN_NAME, chainId: 84532 });
+    if (!settlement.success) return NextResponse.json({ reason: settlement.errorReason }, { status: 422 });
+    receiptTx = settlement.transaction;
+  }
 
   const job = {
     jobId: `job_${Date.now()}`,
@@ -100,6 +120,7 @@ export async function POST(req: Request) {
       tokens: 128,
       latencyMs: 342,
     },
+    outputMode: "fixture — payment and receipt are live on-chain; task output is an example",
     payment: {
       amount: expected.amount,
       asset: expected.asset,

@@ -1,27 +1,19 @@
-# avalanche-agent
+# x402 Agent Gateway
 
-> An Avalanche confidential-token dapp scaffolded with AvaKit, built on Avalanche's Encrypted ERC (eERC) standard. Register, mint, and privately transfer tokens with hidden balances. Next.js + @avakit/react + @avalabs/eerc-sdk + shadcn/ui.
+> A working x402 v2 payment gateway for AI Agents on Base Sepolia. Agents pay per HTTP request with a gasless EIP-3009 signature; the facilitator broadcasts settlement on-chain.
 
 ## Project map
 
-- [lib/eerc-config.ts](lib/eerc-config.ts): deployed eERC contract address + pinned circuit files with SHA-256 hashes + `loadVerifiedCircuits()` (download → verify → blob URLs; tampered CDN copies fail loudly).
-- [scripts/deploy-eerc.mjs](scripts/deploy-eerc.mjs): `pnpm deploy:eerc` — deploy your own standalone instance to Fuji (mint is owner-only, so this is how mint becomes usable) and point the app at it.
-- [app/providers.tsx](app/providers.tsx): `<AvaKitProvider>` (wallet) + `<WagmiProvider>` (required by the eERC SDK's internal reads).
-- [components/demo.tsx](components/demo.tsx): register → unlock → mint → confidential transfer → burn.
-- [CLAUDE.md](CLAUDE.md): agent guide — flow, why this template deviates from AvaKit's usual pattern, how to deploy your own instance.
+- [lib/x402/](lib/x402/): x402 v2 protocol implementation — types, Base64 header encode/decode, server challenge, client signer, facilitator (verify + on-chain settle).
+- [app/api/agent-task/](app/api/agent-task/): protected resource that returns 402 Payment Required.
+- [app/api/x402/verify/](app/api/x402/verify/): facilitator endpoint that verifies the EIP-3009 signature off-chain.
+- [app/api/x402/settle/](app/api/x402/settle/): facilitator endpoint that broadcasts `transferWithAuthorization` on Base Sepolia.
+- [app/api/faucet/](app/api/faucet/): dispenses test AgentToken to burner wallets (real on-chain mint).
+- [contracts/](contracts/): `AgentToken.sol` (ERC-20 + EIP-3009) and `AgentPayments.sol` (auditable settlement pool).
+- [scripts/burner-e2e-v2.mjs](scripts/burner-e2e-v2.mjs): end-to-end smoke — fresh burner → faucet mint → 402 → sign → settle → real tx hash.
 
-## Key APIs
+## Live deployment (Base Sepolia, eip155:84532)
 
-- Init: `useEERC(publicClient, walletClient, EERC_CONTRACT_ADDRESS, circuits)` from `@avalabs/eerc-sdk` — `circuits` is `await loadVerifiedCircuits()` (integrity-checked blob URLs, loaded on mount).
-- Register: `eerc.register()` (one-time, on-chain, idempotent).
-- Unlock: `eerc.generateDecryptionKey()` (per session, off-chain, no gas).
-- Balance + actions: `eerc.useEncryptedBalance()` → `privateMint(to, amount)` (owner-only), `privateTransfer(to, amount)`, `privateBurn(amount)`, `decryptedBalance`, `parsedDecryptedBalance`.
-- Owner gating: `eerc.owner`, `eerc.isAuditorKeySet`, `eerc.setContractAuditorPublicKey(address)` — the demo disables Mint unless the connected wallet is the owner AND the auditor key is set (one-click owner step in the UI).
-- Amounts are base units (token has 2 decimals) — convert with `parseUnits`/`formatUnits`.
-
-## External docs
-
-- eERC contracts + deploy scripts: https://github.com/ava-labs/EncryptedERC
-- eERC SDK: https://avacloud.gitbook.io/encrypted-erc/d87pGPcNAEEw9ISVd17M/usage/sdk-overview
-- Avalanche Builder Hub: https://build.avax.network/llms.txt
-- Fuji faucet: https://core.app/tools/testnet-faucet
+- AgentToken: `0xdabd72e3e7fb2811115970e0c59279aaa0196cdb`
+- AgentPayments: `0x3d22a8ec8e8e47c8914b2ed70d18283a45cee948`
+- Explorer: https://sepolia.basescan.org

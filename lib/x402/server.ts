@@ -1,4 +1,4 @@
-import {
+﻿import {
   type Address,
   type Hex,
   encodeAbiParameters,
@@ -27,15 +27,15 @@ import { encodePaymentRequired, decodePaymentPayload } from "./encode";
  *
  * Scheme: "exact" on EVM networks, settled via EIP-3009
  * `transferWithAuthorization` (ERC-20) or a plain value transfer (native
- * asset). Network: eip155:43113 (Avalanche Fuji).
+ * asset). Network: 
  */
 
 export interface X402ServerOptions {
   /** Where the agent's payment is collected (your AgentPayments pool). */
   payTo: Address;
-  /** Settlement token contract address, or NATIVE_ASSET for AVAX. */
+  /** Settlement token contract address, or NATIVE_ASSET for ETH. */
   asset: Address | typeof NATIVE_ASSET;
-  /** CAIP-2 chain id, e.g. "eip155:43113". */
+  /** CAIP-2 chain id, e.g. "eip155:84532". */
   network: Caip2ChainId;
   /** Fixed price for the "exact" scheme, in atomic units. */
   amount: string;
@@ -75,7 +75,7 @@ export function createPaymentRequired(
     payTo: opts.payTo,
     maxTimeoutSeconds: 300,
     extra: {
-      name: opts.asset === NATIVE_ASSET ? "AVAX" : "AgentToken",
+      name: opts.asset === NATIVE_ASSET ? "ETH" : "AgentToken",
       version: "1",
       decimals: opts.decimals ?? 18,
     },
