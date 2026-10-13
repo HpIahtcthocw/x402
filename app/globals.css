@@ -76,3 +76,20 @@
     color: var(--foreground);
   }
 }
+
+/* Recording view: the same live product with larger, legible payment evidence. */
+.demo-heading { display:flex;flex-direction:column;gap:12px;padding:10px 0 18px; }
+.demo-heading span { color:var(--primary);font:13px var(--font-geist-mono);letter-spacing:3px; }
+.demo-heading strong { font-size:48px;font-weight:550;letter-spacing:-2px;line-height:1.12; }
+.demo-heading small { color:var(--muted-foreground);font-size:16px; }
+.cinema > section:first-of-type { padding:20px 24px; }
+.cinema > section:first-of-type h1 { font-size:30px; }
+.cinema > section:first-of-type p { max-width:1100px; }
+.cinema .protocol-overview { display:none; }
+.cinema .signature-card p { max-height:42px;overflow:hidden; }
+.cinema .payment-workspace { grid-template-columns:280px minmax(0,1fr) 380px; }
+.cinema .payment-workspace > aside:last-child > div:nth-of-type(2) { max-height:320px;overflow:auto; }
+.cinema .payment-workspace button { min-height:40px; }
+.cinema .payment-workspace > section > div { animation:demo-reveal .25s ease-out; }
+@keyframes demo-reveal { from { opacity:0;transform:translateY(6px); } to { opacity:1;transform:none; } }
+@media (max-width:1100px) { .cinema .payment-workspace { grid-template-columns:1fr; } .demo-heading strong { font-size:36px; } }

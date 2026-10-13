@@ -27,7 +27,7 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
-    const pk = process.env.DEPLOYER_PRIVATE_KEY as `0x${string}` | undefined;
+    const pk = (process.env.X402_DEPLOYER_PRIVATE_KEY || process.env.DEPLOYER_PRIVATE_KEY) as `0x${string}` | undefined;
     if (!pk) {
       return NextResponse.json(
         { ok: false, error: "DEPLOYER_PRIVATE_KEY not set" },

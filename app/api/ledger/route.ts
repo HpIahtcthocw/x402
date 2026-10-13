@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createPublicClient, http } from "viem";
+import { createPublicClient, http, type AbiEvent } from "viem";
 import { baseSepolia } from "viem/chains";
 
 const PAYMENTS = (process.env.X402_PAYTO ||
@@ -15,17 +15,25 @@ export async function GET() {
   try {
     const client = createPublicClient({
       chain: baseSepolia,
-      transport: http(process.env.X402_RPC_URL || "https://sepolia.base.org"),
+      transport: http(process.env.X402_LEDGER_RPC_URL || "https://base-sepolia-rpc.publicnode.com"),
     });
     const fromBlock = BigInt(
       process.env.X402_DEPLOY_BLOCK || "47940000",
     );
     const toBlock = await client.getBlockNumber();
 
+    // PublicNode accepts at most 50,000 blocks per eth_getLogs request.
+    async function scan(event: AbiEvent) {
+      const logs: Awaited<ReturnType<typeof client.getLogs>> = [];
+      for (let start = fromBlock; start <= toBlock; start += 50000n) {
+        const end = start + 49999n < toBlock ? start + 49999n : toBlock;
+        logs.push(...await client.getLogs({ address: PAYMENTS, event, fromBlock: start, toBlock: end }));
+      }
+      return logs;
+    }
+
     const [recorded, refunded] = await Promise.all([
-      client.getLogs({
-        address: PAYMENTS,
-        event: {
+      scan({
           type: "event",
           name: "PaymentRecorded",
           inputs: [
@@ -35,37 +43,30 @@ export async function GET() {
             { type: "uint256", name: "amount", indexed: false },
             { type: "uint64", name: "timestamp", indexed: false },
           ],
-        },
-        fromBlock,
-        toBlock,
       }),
-      client.getLogs({
-        address: PAYMENTS,
-        event: {
+      scan({
           type: "event",
           name: "PaymentRefunded",
           inputs: [
             { type: "bytes32", name: "paymentId", indexed: true },
             { type: "uint256", name: "amount", indexed: false },
           ],
-        },
-        fromBlock,
-        toBlock,
       }),
     ]);
 
     const refundedIds = new Set(
-      refunded.map((l) => (l.args.paymentId as string).toLowerCase()),
+      refunded.map((l) => ((l as unknown as { args: { paymentId: string } }).args.paymentId).toLowerCase()),
     );
 
     const entries = recorded.map((l) => {
-      const pid = (l.args.paymentId as string) || "";
+      const args = (l as unknown as { args: { paymentId: string; payer: string; token: string; amount: bigint; timestamp: bigint } }).args;
+      const pid = args.paymentId || "";
       return {
         paymentId: pid,
-        payer: (l.args.payer as string) || "",
-        token: (l.args.token as string) || "",
-        amount: (l.args.amount as bigint)?.toString() || "0",
-        timestamp: Number(l.args.timestamp || 0),
+        payer: args.payer || "",
+        token: args.token || "",
+        amount: args.amount?.toString() || "0",
+        timestamp: Number(args.timestamp || 0),
         refunded: refundedIds.has(pid.toLowerCase()),
         tx: l.transactionHash,
       };

@@ -23,7 +23,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
-import { createWalletClient, custom, http, type Chain, type Address } from "viem";
+import { createWalletClient, custom, http, formatUnits, type Chain, type Address } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 
 /** Base Sepolia (chain id 84532) — minimal chain object for the burner client. */
@@ -87,7 +87,7 @@ export function AgentPaymentsDemo() {
   const { address, provider, chain, status } = useAvaKit();
   const isConnected = status === "connected";
 
-  const [task, setTask] = useState<(typeof TASKS)[number]["id"]>("buy-order");
+  const [task, setTask] = useState<(typeof TASKS)[number]["id"]>("generate-report");
   const [busy, setBusy] = useState(false);
   const [step, setStep] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -111,12 +111,17 @@ export function AgentPaymentsDemo() {
     tx: string;
   }>>([]);
   const [refundingId, setRefundingId] = useState<string | null>(null);
+  const [refundTx, setRefundTx] = useState<string | null>(null);
+  const [ledgerError, setLedgerError] = useState<string | null>(null);
+  const [cinema, setCinema] = useState(false);
+  useEffect(() => { setCinema(new URLSearchParams(location.search).has("cinema")); }, []);
 
   async function fetchChainLedger() {
     try {
       const res = await fetch("/api/ledger", { cache: "no-store" });
       const data = await res.json();
-      if (data?.ok) setChainLedger(data.entries || []);
+      if (data?.ok) { setChainLedger((data.entries || []).slice().reverse()); setLedgerError(null); }
+      else setLedgerError("Ledger unavailable — retrying in 15 seconds");
     } catch {
       /* ignore */
     }
@@ -138,6 +143,7 @@ export function AgentPaymentsDemo() {
       });
       const data = await res.json();
       if (!data?.ok) setError(data?.error || "refund failed");
+      else setRefundTx(data.tx);
       await fetchChainLedger();
     } catch (e) {
       setError(humanizeError(e));
@@ -293,15 +299,17 @@ export function AgentPaymentsDemo() {
 
       const body = await res.json().catch(() => null);
       const respHeader = res.headers.get("payment-response");
-      if (respHeader) setSettlement(decodeSettlementResponse(respHeader));
+      const currentSettlement = respHeader ? decodeSettlementResponse(respHeader) : null;
+      if (currentSettlement) setSettlement(currentSettlement);
 
       if (res.ok) {
         setJob(body as Record<string, unknown>);
         setStep("api -> agent: 200 + job result + PAYMENT-RESPONSE");
         setLedger((l) => [
-          { time: now(), task, amount: "0.001 AGT", status: "SETTLED", tx: settlement?.transaction, recordTx: settlement?.extensions?.paymentRecordTx as string | undefined, paymentId: settlement?.extensions?.paymentId as string | undefined },
+          { time: now(), task, amount: "0.001 AGT", status: "SETTLED", tx: currentSettlement?.transaction, recordTx: currentSettlement?.extensions?.paymentRecordTx as string | undefined, paymentId: currentSettlement?.extensions?.paymentId as string | undefined },
           ...l,
         ]);
+        await fetchChainLedger();
       } else {
         setError(body?.reason || `Payment rejected (${res.status})`);
         setLedger((l) => [{ time: now(), task, amount: "0.001 AGT", status: "FAILED" }, ...l]);
@@ -326,7 +334,8 @@ export function AgentPaymentsDemo() {
             : 3;
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className={`flex flex-col gap-5 ${cinema ? "cinema" : ""}`}>
+      {cinema && <div className="demo-heading"><span>LIVE PRODUCT / BASE SEPOLIA</span><strong>{refundTx ? "Payment returned. Proof preserved." : settlement?.success ? "Paid. Delivered. Recorded." : challenge ? "One request. One payment challenge." : "An API call with a receipt."}</strong><small>AGT test token · example task output · real on-chain payment</small></div>}
       {/* ── Hero ── */}
       <section className="relative overflow-hidden rounded-2xl border border-white/8 bg-card/60 px-6 py-8 backdrop-blur">
         <div className="relative flex flex-col gap-4">
@@ -358,7 +367,7 @@ export function AgentPaymentsDemo() {
       </section>
 
       {/* ── Protocol flow ── */}
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="protocol-overview grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {FLOW.map((f, i) => (
           <div
             key={f.title}
@@ -408,7 +417,7 @@ export function AgentPaymentsDemo() {
           <p className="text-sm text-muted-foreground">Starting burner wallet…</p>
         </div>
       ) : (
-        <div className="grid items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)_340px]">
+        <div className="payment-workspace grid items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)_340px]">
           {/* ── Left: agent task list ── */}
           <aside className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5 rounded-xl border border-white/8 bg-card p-3 backdrop-blur">
@@ -530,7 +539,7 @@ export function AgentPaymentsDemo() {
             )}
 
             {signatureHeader ? (
-              <div className="flex flex-col gap-2 rounded-xl border border-primary/30 bg-primary/6 p-4 backdrop-blur">
+              <div className="signature-card flex flex-col gap-2 rounded-xl border border-primary/30 bg-primary/6 p-4 backdrop-blur">
                 <div className="flex items-center gap-2 text-sm font-medium text-primary">
                   <ShieldCheck className="size-4" /> PAYMENT-SIGNATURE generated (EIP-3009)
                 </div>
@@ -553,6 +562,8 @@ export function AgentPaymentsDemo() {
                   full={settlement.transaction}
                 />
                 <Field label="network" value={settlement.network} mono />
+                {typeof settlement.extensions?.paymentRecordTx === "string" && <a className="text-primary underline" href={`https://sepolia.basescan.org/tx/${settlement.extensions.paymentRecordTx}`} target="_blank" rel="noreferrer">Receipt recorded on Base ↗</a>}
+                <a className="text-primary underline" href={`https://sepolia.basescan.org/tx/${settlement.transaction}`} target="_blank" rel="noreferrer">Verify settlement on Base ↗</a>
                 {settlement.payer ? (
                   <Field label="payer" value={shortenAddress(settlement.payer, 8)} mono />
                 ) : null}
@@ -583,16 +594,13 @@ export function AgentPaymentsDemo() {
                 <span className="text-muted-foreground">Booked on-chain</span>
                 <span className="font-mono font-semibold text-primary">
                   {chainLedger.length} tx ·{" "}
-                  {(
-                    chainLedger.reduce((s, e) => s + BigInt(e.amount), 0n) /
-                    10n ** 18n
-                  ).toString()}{" "}
+                  {formatUnits(chainLedger.reduce((s, e) => s + BigInt(e.amount), 0n), 18)}{" "}
                   AGT
                 </span>
               </div>
               <Field
                 label="pool"
-                value={shortenAddress(process.env.NEXT_PUBLIC_X402_PAYTO || "", 12)}
+                value={shortenAddress(process.env.NEXT_PUBLIC_X402_PAYTO || "0x3d22a8ec8e8e47c8914b2ed70d18283a45cee948", 12)}
                 mono
                 full={process.env.NEXT_PUBLIC_X402_PAYTO}
               />
@@ -627,7 +635,7 @@ export function AgentPaymentsDemo() {
             <div className="flex flex-col gap-1.5 rounded-xl border border-white/5 bg-card p-3 backdrop-blur">
               {chainLedger.length === 0 ? (
                 <p className="py-6 text-center font-mono text-xs text-muted-foreground">
-                  loading on-chain payments…
+                  {ledgerError || "No recorded payments yet"}
                 </p>
               ) : (
                 chainLedger.map((e, i) => (
@@ -645,7 +653,7 @@ export function AgentPaymentsDemo() {
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-0.5">
                       <span className="font-mono text-primary">
-                        {(BigInt(e.amount) / 10n ** 18n).toString()} AGT
+                        {formatUnits(BigInt(e.amount), 18)} AGT
                       </span>
                       {e.refunded ? (
                         <span className="rounded-full border border-red-400/30 bg-red-400/10 px-1.5 py-0.5 font-mono text-[11px] text-red-300">
@@ -665,14 +673,15 @@ export function AgentPaymentsDemo() {
                 ))
               )}
             </div>
+            {refundTx && <a className="break-all rounded-lg border border-primary/30 p-3 font-mono text-xs text-primary" href={`https://sepolia.basescan.org/tx/${refundTx}`} target="_blank" rel="noreferrer">Refund confirmed · {refundTx} ↗</a>}
             <div className="flex flex-col gap-1.5 rounded-xl border border-white/5 bg-card p-3 font-mono text-[11px] text-muted-foreground backdrop-blur">
               <div className="mb-0.5 text-[11px] uppercase tracking-wider text-muted-foreground/60">
                 Deployed contracts · Base Sepolia
               </div>
-              <Field label="token" value={shortenAddress(process.env.NEXT_PUBLIC_X402_TOKEN || "", 10)} mono />
+              <Field label="token" value={shortenAddress(process.env.NEXT_PUBLIC_X402_TOKEN || "0xdabd72e3e7fb2811115970e0c59279aaa0196cdb", 10)} mono />
               <Field
                 label="payments"
-                value={shortenAddress(process.env.NEXT_PUBLIC_X402_PAYTO || "", 10)}
+                value={shortenAddress(process.env.NEXT_PUBLIC_X402_PAYTO || "0x3d22a8ec8e8e47c8914b2ed70d18283a45cee948", 10)}
                 mono
               />
             </div>
