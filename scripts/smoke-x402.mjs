@@ -13,7 +13,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { toViemChain } from "@avakit/core";
 
 const BASE = process.argv[2] || "http://localhost:3111";
-const TASK = process.env.SMOKE_TASK || "buy-order";
+const TASK = process.env.SMOKE_TASK || "quote:BTC";
 const KEY = process.env.TEST_PRIVATE_KEY || "0x" + "11".repeat(32);
 
 const IS_TESTNET = process.env.MONAD_TESTNET === "1";

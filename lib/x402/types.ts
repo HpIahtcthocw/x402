@@ -5,7 +5,7 @@
  * PAYMENT-RESPONSE HTTP headers.
  */
 
-/** CAIP-2 chain identifier, e.g. "eip155:84532". */
+/** CAIP-2 chain identifier, e.g. "eip155:10143". */
 export type Caip2ChainId = string;
 
 /** ResourceInfo — describes the protected resource the agent is paying for. */
@@ -19,7 +19,7 @@ export interface ResourceInfo {
 export interface PaymentRequirements {
   /** Payment scheme identifier, e.g. "exact". */
   scheme: string;
-  /** Blockchain network in CAIP-2 format, e.g. "eip155:84532". */
+  /** Blockchain network in CAIP-2 format, e.g. "eip155:10143". */
   network: Caip2ChainId;
   /** Required payment amount in atomic token units. */
   amount: string;

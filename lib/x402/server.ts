@@ -27,7 +27,7 @@ import { encodePaymentRequired, decodePaymentPayload } from "./encode";
  *
  * Scheme: "exact" on EVM networks, settled via EIP-3009
  * `transferWithAuthorization` (ERC-20) or a plain value transfer (native
- * asset). Network: 
+ * asset). Network: Monad Testnet (eip155:10143).
  */
 
 export interface X402ServerOptions {
@@ -35,7 +35,7 @@ export interface X402ServerOptions {
   payTo: Address;
   /** Settlement token contract address, or NATIVE_ASSET for ETH. */
   asset: Address | typeof NATIVE_ASSET;
-  /** CAIP-2 chain id, e.g. "eip155:84532". */
+  /** CAIP-2 chain id, e.g. "eip155:10143". */
   network: Caip2ChainId;
   /** Fixed price for the "exact" scheme, in atomic units. */
   amount: string;

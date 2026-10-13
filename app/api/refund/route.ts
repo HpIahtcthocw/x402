@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { createWalletClient, createPublicClient, http } from "viem";
-import { baseSepolia } from "viem/chains";
 import { privateKeyToAccount } from "viem/accounts";
+import { toViemChain } from "@avakit/core";
+import { monadTestnet } from "@/lib/chain";
+import { X402_NETWORK, X402_PAYTO } from "@/lib/x402/config";
 
-const PAYMENTS = (process.env.X402_PAYTO ||
-  "0x3d22a8ec8e8e47c8914b2ed70d18283a45cee948") as `0x${string}`;
+const PAYMENTS = X402_PAYTO as `0x${string}`;
 
 const ABI = [
   {
@@ -18,6 +19,11 @@ const ABI = [
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Owner-authorized refund. `AgentPayments.refund()` is `onlyOwner`, so the
+ * browser can never call it directly — this route signs with the deployer key
+ * and returns the second on-chain transaction (`PaymentRefunded`).
+ */
 export async function POST(req: Request) {
   try {
     const { paymentId } = (await req.json()) as { paymentId: `0x${string}` };
@@ -35,15 +41,10 @@ export async function POST(req: Request) {
       );
     }
     const account = privateKeyToAccount(pk);
-    const wallet = createWalletClient({
-      chain: baseSepolia,
-      transport: http(process.env.X402_RPC_URL || "https://sepolia.base.org"),
-      account,
-    });
-    const publicClient = createPublicClient({
-      chain: baseSepolia,
-      transport: http(process.env.X402_RPC_URL || "https://sepolia.base.org"),
-    });
+    const chain = toViemChain(monadTestnet);
+    const transport = http(process.env.X402_RPC_URL || X402_NETWORK.rpc);
+    const wallet = createWalletClient({ chain, transport, account });
+    const publicClient = createPublicClient({ chain, transport });
     const hash = await wallet.writeContract({
       address: PAYMENTS,
       abi: ABI,

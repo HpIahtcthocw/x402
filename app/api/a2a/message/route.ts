@@ -13,6 +13,17 @@ import {
 } from "@/lib/x402/config";
 import { getTask } from "@/lib/x402/a2a-store";
 import { TASK_OUTPUTS } from "@/lib/x402/task-outputs";
+import { fetchQuote, isQuoteTask } from "@/lib/x402/quote";
+import {
+  fetchInference,
+  INFERENCE_PROMPT,
+  inferenceConfig,
+  isInferenceTask,
+} from "@/lib/x402/inference";
+import {
+  type IdentityAttestation,
+  verifyIdentityAttestation,
+} from "@/lib/x402/identity";
 import type { PaymentPayload } from "@/lib/x402/types";
 
 /**
@@ -99,9 +110,32 @@ export async function POST(req: Request) {
   }
 
   // Merchant-side state management: retrieve the requirement we advertised
-  // for this taskId (spec §5.1 Merchant Agent).
-  const record = getTask(taskId);
-  const expected = record?.requirement ?? payload.accepted;
+  // for this taskId (spec §5.1 Merchant Agent). If we have no record of it we
+  // reject rather than trusting the client-supplied `accepted` — otherwise the
+  // "validate against the terms we offered" claim would be empty.
+  const record = await getTask(taskId);
+  if (!record) {
+    return NextResponse.json({
+      jsonrpc: "2.0",
+      id,
+      result: {
+        kind: "task",
+        id: taskId,
+        status: {
+          state: "completed",
+          message: {
+            kind: "message",
+            role: "agent",
+            parts: [
+              { kind: "text", text: "Unknown or expired taskId — no payment terms on record." },
+            ],
+            metadata: { "x402.payment.status": "payment-rejected" },
+          },
+        },
+      },
+    });
+  }
+  const expected = record.requirement;
 
   // Off-chain shape + requirement match (the facilitator half).
   const result = verifyPayment(payload, expected);
@@ -143,12 +177,32 @@ export async function POST(req: Request) {
     amount: expected.amount,
   });
 
-  const task = record?.task ?? "generate-report";
-  const output = TASK_OUTPUTS[task] ?? {
-    summary: `Completed "${task}" for ${getAddress(result.payer ?? X402_PAYTO)}`,
-    tokens: 128,
-    latencyMs: 342,
-  };
+  // Optional payer identity — the same claim the HTTP path carries in a header,
+  // here travelling inside the A2A message metadata. Verified, never required.
+  const attestation = (metadata["x402.identity.attestation"] ??
+    null) as IdentityAttestation | null;
+  const identity = attestation
+    ? await verifyIdentityAttestation(attestation, X402_NETWORK.chainId)
+    : undefined;
+
+  const task = record.task;
+  // Quoted tasks serve real market data; the vendor-billed task needs a key;
+  // anything else falls back to a sample body.
+  let output: Record<string, unknown> | null;
+  if (isQuoteTask(task)) {
+    output = await fetchQuote(task).catch(() => null);
+  } else if (isInferenceTask(task)) {
+    const cfg = inferenceConfig(task);
+    output = cfg.configured
+      ? await fetchInference(task, INFERENCE_PROMPT).catch(() => null)
+      : { outputMode: "unconfigured", reason: `set ${cfg.keyEnv} to enable this resource` };
+  } else {
+    output = TASK_OUTPUTS[task] ?? {
+      summary: `Completed "${task}" for ${getAddress(result.payer ?? X402_PAYTO)}`,
+      tokens: 128,
+      latencyMs: 342,
+    };
+  }
 
   return NextResponse.json(
     {
@@ -177,6 +231,7 @@ export async function POST(req: Request) {
                 network: settlement.network,
                 amount: settlement.amount,
                 payer: settlement.payer,
+                ...(identity ? { identity } : {}),
               },
             },
           },

@@ -8,7 +8,7 @@ import {
   parseUnits,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { monadMainnet } from "@/lib/chain";
+import { monadTestnet } from "@/lib/chain";
 import { toViemChain } from "@avakit/core";
 import { X402_NETWORK, X402_TOKEN_ADDRESS, X402_DEMO } from "@/lib/x402/config";
 
@@ -56,10 +56,10 @@ export async function POST(req: Request) {
     });
   }
 
-  const chain = toViemChain(monadMainnet);
+  const chain = toViemChain(monadTestnet);
   const account = privateKeyToAccount(privateKey as `0x${string}`);
-  const publicClient = createPublicClient({ chain, transport: http() });
-  const walletClient = createWalletClient({ chain, transport: http(), account });
+  const publicClient = createPublicClient({ chain, transport: http(X402_NETWORK.rpc) });
+  const walletClient = createWalletClient({ chain, transport: http(X402_NETWORK.rpc), account });
 
   try {
     const amount = parseUnits("1", 18);

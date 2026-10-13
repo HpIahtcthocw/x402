@@ -22,19 +22,20 @@
  *   }
  *
  * Then call:
- *   pay_and_call({ url: "https://your-gateway/api/agent-task", method: "POST" })
+ *   pay_and_call({ url: "https://your-gateway/api/agent-task", body: { task: "quote:BTC" } })
  *
  * The server:
- *   1. POSTs to the target, expects 402 + PAYMENT-REQUIRED
+ *   1. POSTs to the target, expects 402 + a PAYMENT-REQUIRED header
  *   2. Signs the EIP-3009 authorization with the burner key (offline, gasless)
- *   3. POSTs the signed payload to /api/x402/settle
- *   4. Returns the settled response + tx hash
+ *   3. POSTs the signed payload to /api/x402/settle on Monad Testnet
+ *   4. Returns the settled response + settlement / receipt tx hashes
  */
 
 import { randomPrivateKey, privateKeyToAccount } from "viem/accounts";
-import { base64encode, base64decode } from "./mcp-encode.mjs";
 
 const GATEWAY_URL = process.env.GATEWAY_URL || "http://localhost:3000";
+const CHAIN_ID = Number(process.env.X402_CHAIN_ID || 10143);
+const EXPLORER = process.env.X402_EXPLORER || "https://testnet.monadexplorer.com";
 let burnerKey = process.env.BURNER_PRIVATE_KEY;
 if (!burnerKey) {
   burnerKey = randomPrivateKey();
@@ -54,13 +55,29 @@ async function httpJson(method, url, body, headers = {}) {
   const text = await res.text();
   let data;
   try { data = JSON.parse(text); } catch { data = { raw: text }; }
-  return { status: res.status, data };
+  return { status: res.status, data, headers: res.headers };
 }
 
-/** Sign EIP-3009 transferWithAuthorization with viem (offline). */
-async function signAuthorization(tokenAddress, tokenName, auth) {
-  const { signTypedData } = await import("viem/accounts");
+const b64encode = (obj) => Buffer.from(JSON.stringify(obj), "utf8").toString("base64");
+const b64decode = (s) => JSON.parse(Buffer.from(s, "base64").toString("utf8"));
+
+/** Sign EIP-3009 transferWithAuthorization with viem (offline, gasless). */
+async function signAuthorization(requirement) {
   const account = privateKeyToAccount(burnerKey);
+  const auth = requirement.authorization || {
+    from: account.address,
+    to: requirement.payTo,
+    value: requirement.amount,
+    validAfter: "0",
+    validBefore: String(Math.floor(Date.now() / 1000) + 3600),
+    nonce: "0x" + [...crypto.getRandomValues(new Uint8Array(32))].map((b) => b.toString(16).padStart(2, "0")).join(""),
+  };
+  const domain = {
+    name: requirement.extra?.name || "AgentToken",
+    version: "1",
+    chainId: CHAIN_ID,
+    verifyingContract: requirement.asset,
+  };
   const types = {
     TransferWithAuthorization: [
       { name: "from", type: "address" },
@@ -71,12 +88,6 @@ async function signAuthorization(tokenAddress, tokenName, auth) {
       { name: "nonce", type: "bytes32" },
     ],
   };
-  const domain = {
-    name: tokenName,
-    version: "1",
-    chainId: 84532,
-    verifyingContract: tokenAddress,
-  };
   const message = {
     from: auth.from,
     to: auth.to,
@@ -85,8 +96,8 @@ async function signAuthorization(tokenAddress, tokenName, auth) {
     validBefore: BigInt(auth.validBefore),
     nonce: auth.nonce,
   };
-  const sig = await account.signTypedData({ domain, types, primaryType: "TransferWithAuthorization", message });
-  return sig;
+  const signature = await account.signTypedData({ domain, types, primaryType: "TransferWithAuthorization", message });
+  return { auth, signature };
 }
 
 // ---------- MCP protocol ----------
@@ -95,7 +106,7 @@ const TOOLS = [
   {
     name: "pay_and_call",
     description:
-      "Make an HTTP call through the x402 payment gateway. Sends the request; if the server responds 402 Payment Required, automatically signs an EIP-3009 authorization and settles on Base Sepolia, then retries with payment attached. Returns the final response body plus settlement tx hashes.",
+      "Make an HTTP call through the x402 payment gateway. Sends the request; if the server responds 402 Payment Required, automatically signs an EIP-3009 authorization and settles on Monad Testnet, then retries with payment attached. Returns the final response body plus settlement tx hashes.",
     inputSchema: {
       type: "object",
       required: ["url"],
@@ -109,7 +120,7 @@ const TOOLS = [
 ];
 
 async function handlePayAndCall(args) {
-  const { url, method = "POST", body = {} } = args;
+  const { url, method = "POST", body = { task: "quote:BTC" } } = args;
 
   // 1. first call — expect 402
   const first = await httpJson(method, url, body);
@@ -119,43 +130,43 @@ async function handlePayAndCall(args) {
     };
   }
 
-  const requiredB64 = first.data["payment-required"];
-  if (!requiredB64) throw new Error("402 response missing payment-required header");
-  const req = JSON.parse(new TextDecoder().decode(base64decode(requiredB64)));
+  const requiredB64 = first.headers.get("payment-required");
+  if (!requiredB64) throw new Error("402 response missing PAYMENT-REQUIRED header");
+  const paymentRequired = b64decode(requiredB64);
+  const requirement = paymentRequired.accepts?.[0];
+  if (!requirement) throw new Error("PAYMENT-REQUIRED header has no acceptable requirement");
 
-  // 2. sign
-  const auth = req.authorization;
-  const signature = await signAuthorization(req.asset, req.assetName || "AgentToken", auth);
+  // 2. sign (offline EIP-3009 — the agent never touches gas)
+  const { auth, signature } = await signAuthorization(requirement);
   const payload = {
-    x402Version: 1,
-    scheme: "exact",
-    network: req.network,
-    payload: {
-      signature,
-      authorization: auth,
-      extra: {},
-    },
+    x402Version: 2,
+    resource: paymentRequired.resource,
+    accepted: requirement,
+    payload: { signature, authorization: auth },
   };
-  const payB64 = base64encode(JSON.stringify(payload));
+  const payB64 = b64encode(payload);
 
-  // 3. settle via gateway facilitator
+  // 3. settle through the gateway facilitator (this is what pays the gas)
   const settle = await httpJson("POST", `${GATEWAY_URL}/api/x402/settle`, {
     paymentPayload: payload,
-    paymentRequirements: req,
+    paymentRequirements: requirement,
   });
 
-  // 4. retry original request with payment header
+  // 4. retry the original request with the payment attached
   const retry = await httpJson(method, url, body, { "payment-signature": payB64 });
 
+  const tx = settle.data.transaction || "n/a";
+  const record = settle.data?.extensions?.paymentRecordTx || "n/a";
   return {
     content: [
       {
         type: "text",
         text: [
           `✅ Paid and called ${url}`,
-          `  challenge: ${req.amount} ${req.assetName || "AGT"} → ${req.payTo}`,
-          `  settle tx: ${settle.data.transaction || "n/a"}`,
-          `  payment record tx: ${settle.data?.extensions?.paymentRecordTx || "n/a"}`,
+          `  challenge: ${requirement.amount} AGT → ${requirement.payTo}`,
+          `  settle tx: ${tx}${tx !== "n/a" ? `  ${EXPLORER}/tx/${tx}` : ""}`,
+          `  receipt tx: ${record}${record !== "n/a" ? `  ${EXPLORER}/tx/${record}` : ""}`,
+          `  payment id: ${settle.data?.extensions?.paymentId || auth.nonce}`,
           `  final status: ${retry.status}`,
           `  response: ${JSON.stringify(retry.data).slice(0, 800)}`,
         ].join("\n"),

@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     id?: string;
     task?: string;
   };
-  const task = body.task || "buy-order";
+  const task = body.task || "quote:BTC";
 
   const resource = {
     url: `${req.url}`,
@@ -43,7 +43,7 @@ export async function POST(req: Request) {
   });
 
   const taskId = `task_${Date.now()}`;
-  saveTask(taskId, {
+  await saveTask(taskId, {
     task,
     requirement: paymentRequired.accepts[0],
     createdAt: Date.now(),

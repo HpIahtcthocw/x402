@@ -20,9 +20,7 @@ export const SUPPORTED_NETWORKS: Record<
   Caip2ChainId,
   { chainId: number; name: string; explorer: string }
 > = {
-  "eip155:84532": { chainId: 84532, name: "Base Sepolia", explorer: "https://sepolia.basescan.org" },
-  "eip155:8453": { chainId: 8453, name: "Base", explorer: "https://basescan.org" },
-  "eip155:143": { chainId: 143, name: "Monad", explorer: "https://monadscan.com" },
+  "eip155:10143": { chainId: 10143, name: "Monad Testnet", explorer: "https://testnet.monadexplorer.com" },
 };
 
 /** Minimal ABI of AgentToken.transferWithAuthorization — the only on-chain

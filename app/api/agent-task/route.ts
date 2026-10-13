@@ -1,137 +1,82 @@
-import { NextResponse } from "next/server";
-import { getAddress } from "viem";
-import { createPublicClient, createWalletClient, http } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
-import { baseSepolia } from "@/lib/chain";
-import { toViemChain } from "@avakit/core";
-import { settleExact } from "@/lib/x402/facilitator";
-import { X402_TOKEN_NAME } from "@/lib/x402/config";
-import {
-  createPaymentRequired,
-  parsePaymentSignature,
-  verifyPayment,
-  buildSettlementResponse,
-} from "@/lib/x402/server";
-import { encodeSettlementResponse } from "@/lib/x402/encode";
-import {
-  X402_AMOUNT,
-  X402_DEMO,
-  X402_NETWORK,
-  X402_PAYTO,
-  X402_TOKEN_ADDRESS,
-  X402_TOKEN_DECIMALS,
-} from "@/lib/x402/config";
+import { meter } from "@/lib/x402/meter";
 import { TASK_OUTPUTS } from "@/lib/x402/task-outputs";
+import { fetchQuote, isQuoteTask } from "@/lib/x402/quote";
+import {
+  fetchInference,
+  INFERENCE_PROMPT,
+  inferenceConfig,
+  isInferenceTask,
+} from "@/lib/x402/inference";
 
 /**
- * Demo protected resource: an "agent job" the agent pays for per task via
- * x402 (exact scheme, EIP-3009 on Monad).
+ * Demo metered resource — an API call the agent pays for per request via x402
+ * (exact scheme, EIP-3009 on Monad Testnet).
  *
- * Flow:
- *  1. Agent POSTs a task without PAYMENT-SIGNATURE → 402 + PAYMENT-REQUIRED.
- *  2. Agent signs transferWithAuthorization and retries with PAYMENT-SIGNATURE.
- *  3. Server verifies the payload shape off-chain; the facilitator route
- *     (app/api/x402/settle) performs the real on-chain settlement. In demo
- *     mode (default) this route serves the result directly with a demo
- *     receipt; with X402_DEMO=false it requires a settled on-chain tx hash.
+ * The entire 402 → sign → settle → receipt loop lives in `meter()`; this route
+ * only declares what it sells. That is the point of the library: one line to
+ * meter any endpoint.
+ *
+ * The quoted tasks return **real market data** (Binance public market data) —
+ * the agent pays, and what it gets back is the actual spot price. Payment,
+ * receipt and refund are real either way; if the upstream vendor is down the
+ * call still returns an explicit `outputMode: "unavailable"`.
+ *
+ *   POST /api/agent-task   { "task": "quote:BTC" }
  */
+export const POST = meter(
+  async (_req, { task, body }) => {
+    const base = {
+      jobId: `job_${Date.now()}`,
+      task,
+      model: body.model || "agent-base",
+    };
 
-interface TaskBody {
-  task?: string;
-  model?: string;
-}
+    if (isQuoteTask(task)) {
+      try {
+        return { ...base, output: await fetchQuote(task), outputMode: "live — Binance public market data" };
+      } catch (e) {
+        return {
+          ...base,
+          output: null,
+          outputMode: "unavailable",
+          reason: e instanceof Error ? e.message : "upstream error",
+          note: "the payment and its on-chain receipt are unaffected by upstream availability",
+        };
+      }
+    }
 
-export async function POST(req: Request) {
-  const body = (await req.json().catch(() => ({}))) as TaskBody;
-  const task = body.task || "generate-report";
+    if (isInferenceTask(task)) {
+      const cfg = inferenceConfig(task);
+      if (!cfg.configured) {
+        return {
+          ...base,
+          output: null,
+          outputMode: "unconfigured",
+          reason: `set ${cfg.keyEnv} to enable this resource`,
+        };
+      }
+      try {
+        return {
+          ...base,
+          output: await fetchInference(task, body.prompt || INFERENCE_PROMPT),
+          outputMode: `live — ${cfg.vendor} (${cfg.model})`,
+        };
+      } catch (e) {
+        return {
+          ...base,
+          output: null,
+          outputMode: "unavailable",
+          reason: e instanceof Error ? e.message : "upstream error",
+          note: "the payment and its on-chain receipt are unaffected by upstream availability",
+        };
+      }
+    }
 
-  const resource = {
-    url: `${req.url}`,
-    description: `Run agent task "${task}" — paid per execution via x402`,
-    mimeType: "application/json",
-  };
-
-  const { header, paymentRequired } = createPaymentRequired(resource, {
-    payTo: X402_PAYTO,
-    asset: X402_TOKEN_ADDRESS,
-    network: X402_NETWORK.caip2,
-    amount: X402_AMOUNT,
-    decimals: X402_TOKEN_DECIMALS,
-  });
-
-  // No PAYMENT-SIGNATURE → challenge the agent.
-  const payload = parsePaymentSignature(req.headers);
-  if (!payload) {
-    return new NextResponse(
-      JSON.stringify({
-        error: "Payment required",
-        details: "Attach a PAYMENT-SIGNATURE header to complete the payment",
-        x402: paymentRequired,
-      }),
-      { status: 402, headers: { "payment-required": header } },
-    );
-  }
-
-  // Have a signature — verify its shape against what we advertised.
-  const expected = paymentRequired.accepts[0];
-  const result = verifyPayment(payload, expected);
-
-  if (!result.isValid) {
-    return new NextResponse(
-      JSON.stringify({ error: "Payment invalid", reason: result.invalidReason }),
-      { status: 400, headers: { "payment-required": header } },
-    );
-  }
-
-  // In demo mode, serve immediately with a synthetic receipt. In production
-  // the facilitator settles first (POST /api/x402/settle) and you check
-  // result.success before serving.
-  let receiptTx =
-    (process.env.X402_DEMO_TX as string) || `0x${"0".repeat(64)}`;
-
-  let settlement = buildSettlementResponse({
-    success: true,
-    transaction: receiptTx,
-    network: X402_NETWORK.caip2,
-    payer: result.payer ? (result.payer as `0x${string}`) : undefined,
-    amount: expected.amount,
-  });
-
-  // Only release the resource after both transfer and receipt booking confirm.
-  if (!X402_DEMO) {
-    const key = process.env.X402_DEPLOYER_PRIVATE_KEY as `0x${string}` | undefined;
-    if (!key) return NextResponse.json({ reason: "Facilitator not configured" }, { status: 503 });
-    const transport = http(process.env.X402_RPC_URL || "https://sepolia.base.org");
-    const chain = toViemChain(baseSepolia);
-    settlement = await settleExact({
-      publicClient: createPublicClient({ chain, transport }),
-      walletClient: createWalletClient({ chain, transport, account: privateKeyToAccount(key) }),
-    }, { paymentPayload: payload, paymentRequirements: expected, tokenAddress: X402_TOKEN_ADDRESS, tokenName: X402_TOKEN_NAME, chainId: 84532 });
-    if (!settlement.success) return NextResponse.json({ reason: settlement.errorReason }, { status: 422 });
-    receiptTx = settlement.transaction;
-  }
-
-  const job = {
-    jobId: `job_${Date.now()}`,
-    task,
-    model: body.model || "agent-base",
-    output: TASK_OUTPUTS[task] ?? {
-      summary: `Completed "${task}" for ${getAddress(result.payer ?? X402_PAYTO)}`,
-      tokens: 128,
-      latencyMs: 342,
-    },
-    outputMode: "fixture — payment and receipt are live on-chain; task output is an example",
-    payment: {
-      amount: expected.amount,
-      asset: expected.asset,
-      network: expected.network,
-      settled: X402_DEMO ? "demo" : "onchain",
-      tx: receiptTx,
-    },
-  };
-
-  return new NextResponse(JSON.stringify(job), {
-    status: 200,
-    headers: { "payment-response": encodeSettlementResponse(settlement) },
-  });
-}
+    return {
+      ...base,
+      output: TASK_OUTPUTS[task] ?? { summary: `Completed "${task}"`, tokens: 128, latencyMs: 342 },
+      outputMode: "fixture — payment and receipt are live on-chain; this resource body is an example",
+    };
+  },
+  { name: "quote:BTC" },
+);
