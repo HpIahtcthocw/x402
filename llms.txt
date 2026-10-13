@@ -1,19 +1,22 @@
 # x402 Agent Gateway
 
-> A working x402 v2 payment gateway for AI Agents on Base Sepolia. Agents pay per HTTP request with a gasless EIP-3009 signature; the facilitator broadcasts settlement on-chain.
+> The receipt layer for x402 — on Monad. Agents pay per HTTP request with a gasless EIP-3009 signature; the facilitator broadcasts settlement on-chain and books every payment as a refundable receipt.
 
 ## Project map
 
-- [lib/x402/](lib/x402/): x402 v2 protocol implementation — types, Base64 header encode/decode, server challenge, client signer, facilitator (verify + on-chain settle).
+- [lib/x402/](lib/x402/): x402 v2 protocol implementation — types, Base64 header encode/decode, server challenge, client signer, facilitator (verify + on-chain settle), and the one-line `meter()` wrapper.
 - [app/api/agent-task/](app/api/agent-task/): protected resource that returns 402 Payment Required.
 - [app/api/x402/verify/](app/api/x402/verify/): facilitator endpoint that verifies the EIP-3009 signature off-chain.
-- [app/api/x402/settle/](app/api/x402/settle/): facilitator endpoint that broadcasts `transferWithAuthorization` on Base Sepolia.
+- [app/api/x402/settle/](app/api/x402/settle/): facilitator endpoint that broadcasts `transferWithAuthorization` on Monad Testnet.
+- [app/api/ledger/](app/api/ledger/): the on-chain receipt ledger (Envio HyperRPC, public-RPC fallback).
+- [app/api/receipt/](app/api/receipt/): raw `AgentPayments.settlements(paymentId)` contract read.
+- [app/api/refund/](app/api/refund/): owner-authorized refund (server signs; the browser never touches the key).
 - [app/api/faucet/](app/api/faucet/): dispenses test AgentToken to burner wallets (real on-chain mint).
 - [contracts/](contracts/): `AgentToken.sol` (ERC-20 + EIP-3009) and `AgentPayments.sol` (auditable settlement pool).
-- [scripts/burner-e2e-v2.mjs](scripts/burner-e2e-v2.mjs): end-to-end smoke — fresh burner → faucet mint → 402 → sign → settle → real tx hash.
+- [scripts/burner-e2e-v2.mjs](scripts/burner-e2e-v2.mjs): end-to-end smoke — fresh burner → faucet mint → 402 → sign → settle → real tx hash + replay check.
 
-## Live deployment (Base Sepolia, eip155:84532)
+## Live deployment (Monad Testnet, eip155:10143)
 
 - AgentToken: `0xdabd72e3e7fb2811115970e0c59279aaa0196cdb`
 - AgentPayments: `0x3d22a8ec8e8e47c8914b2ed70d18283a45cee948`
-- Explorer: https://sepolia.basescan.org
+- Explorer: https://testnet.monadexplorer.com
