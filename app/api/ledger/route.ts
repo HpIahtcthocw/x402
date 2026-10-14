@@ -27,9 +27,9 @@ const RPC_URL = process.env.X402_LEDGER_RPC_URL || (ENVIO_TOKEN ? `${ENVIO_HYPER
  */
 // Envio HyperRPC on Monad also caps eth_getLogs at 100 blocks per call,
 // so we always scan a recent window in small chunks.
-const CHUNK = 1000n;
-const RECENT_WINDOW = 30_000n;
-const PACE_MS = 150;
+const CHUNK = 100n;
+const RECENT_WINDOW = 5_000n;
+const PACE_MS = 50;
 
 const PAYMENT_RECORDED: AbiEvent = {
   type: "event",
