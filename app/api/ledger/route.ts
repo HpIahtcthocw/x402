@@ -25,9 +25,11 @@ const RPC_URL = process.env.X402_LEDGER_RPC_URL || (ENVIO_TOKEN ? `${ENVIO_HYPER
  * bursts, so without an Envio token we scan a recent window in 1000-block
  * chunks, both events in one call (OR topics) and paced to stay under the limit.
  */
-const CHUNK = ENVIO_TOKEN ? 1_000_000n : 1000n;
+// Envio HyperRPC on Monad also caps eth_getLogs at 100 blocks per call,
+// so we always scan a recent window in small chunks.
+const CHUNK = 1000n;
 const RECENT_WINDOW = 30_000n;
-const PACE_MS = ENVIO_TOKEN ? 0 : 250;
+const PACE_MS = 150;
 
 const PAYMENT_RECORDED: AbiEvent = {
   type: "event",
@@ -71,12 +73,10 @@ export async function GET() {
     });
     const deployBlock = BigInt(X402_DEPLOY_BLOCK);
     const toBlock = await client.getBlockNumber();
-    // Fallback scans a recent window; Envio walks the whole history from deploy.
-    const fromBlock = ENVIO_TOKEN
-      ? deployBlock
-      : toBlock - RECENT_WINDOW > deployBlock
-        ? toBlock - RECENT_WINDOW
-        : deployBlock;
+    // Always scan a recent window — Envio on Monad doesn't support large ranges.
+    const fromBlock = toBlock - RECENT_WINDOW > deployBlock
+      ? toBlock - RECENT_WINDOW
+      : deployBlock;
 
     /** Free RPCs answer `-32029 Too Many Requests` on bursts; back off + retry. */
     async function getLogsPaced(params: Parameters<typeof client.getLogs>[0]) {
@@ -123,12 +123,7 @@ export async function GET() {
       return { recorded, refunded };
     }
 
-    const { recorded, refunded } = ENVIO_TOKEN
-      ? await Promise.all([scan(PAYMENT_RECORDED), scan(PAYMENT_REFUNDED)]).then(([r, f]) => ({
-          recorded: r as unknown as PaymentRecordedLog[],
-          refunded: f as unknown as PaymentRefundedLog[],
-        }))
-      : await scanBoth();
+    const { recorded, refunded } = await scanBoth();
 
     const refundedIds = new Set(refunded.map((l) => l.args.paymentId.toLowerCase()));
 
